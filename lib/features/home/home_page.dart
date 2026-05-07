@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../auth/profil_page.dart';
 
 Future<List> getGunung() async {
   final response = await http.get(
-    Uri.parse("http://127.0.0.1:8000/api/gunungs"),
+    Uri.parse("http://192.168.100.6:8000/api/gunungs"),
   );
 
   return jsonDecode(response.body);
@@ -32,7 +31,6 @@ class HomePage extends StatelessWidget {
             SizedBox(width: 100),
           ],
         ),
-        actions: [Icon(Icons.notifications), SizedBox(width: 10)],
       ),
 
       body: Column(
@@ -66,38 +64,6 @@ class HomePage extends StatelessWidget {
               },
             ),
           ),
-        ],
-      ),
-
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-
-        onTap: (index) {
-          // HOME
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => HomePage()),
-            );
-          }
-          // PROFILE
-          else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => ProfilePage()),
-            );
-          }
-        },
-
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: ""),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.confirmation_number),
-            label: "",
-          ),
-
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: ""),
         ],
       ),
     );
