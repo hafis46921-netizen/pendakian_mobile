@@ -30,7 +30,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       // Sesuaikan URL dengan lingkungan Anda (10.0.2.2 untuk emulator)
       final response = await http.post(
-        Uri.parse("http://192.168.100.6:8000/api/login"),
+        Uri.parse("http://192.168.0.101:8000/api/login"),
         headers: {'Accept': 'application/json'},
         body: {
           "email": emailController.text,

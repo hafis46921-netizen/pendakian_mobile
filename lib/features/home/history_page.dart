@@ -47,7 +47,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.100.6:8000/api/history"), // Sesuaikan endpoint
+        Uri.parse("http://192.168.0.101:8000/api/history"), // Sesuaikan endpoint
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',

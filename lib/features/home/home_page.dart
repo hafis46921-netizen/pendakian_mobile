@@ -4,7 +4,7 @@ import 'dart:convert';
 
 Future<List> getGunung() async {
   final response = await http.get(
-    Uri.parse("http://192.168.100.6:8000/api/gunungs"),
+    Uri.parse("http://192.168.0.101:8000/api/gunungs"),
   );
 
   return jsonDecode(response.body);
