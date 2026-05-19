@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../api_config.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -33,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       // Sesuaikan URL dengan lingkungan Anda (10.0.2.2 untuk emulator)
       final response = await http.post(
-        Uri.parse("http://192.168.0.101:8000/api/login"),
+        Uri.parse("${ApiConfig.baseUrl}/login"),
         headers: {'Accept': 'application/json'},
         body: {
           "email": emailController.text,

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart'; // Tambahkan ini
 import 'dart:convert';
 import 'dart:io';
+import '../../api_config.dart'; // Import konfigurasi API untuk URL dinamis
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -76,7 +77,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse("http://192.168.0.101/api/user/profile/foto"),
+      Uri.parse("${ApiConfig.baseUrl}/user/profile/foto"),
     );
 
     request.headers.addAll({

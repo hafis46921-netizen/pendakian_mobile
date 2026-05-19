@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../api_config.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -47,7 +48,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.0.101:8000/api/history"), // Sesuaikan endpoint
+        Uri.parse("${ApiConfig.baseUrl}/history"),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',

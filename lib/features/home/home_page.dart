@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../ticket/pesan_tiket_page.dart'; // Sesuaikan file halaman tiket kamu
+import '../../api_config.dart'; // Import konfigurasi API untuk URL dinamis
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,7 +25,7 @@ class _HomePageState extends State<HomePage> {
   Future<List<dynamic>> getGunung() async {
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.0.101:8000/api/gunungs"),
+        Uri.parse("${ApiConfig.baseUrl}/gunungs"),
       ).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {

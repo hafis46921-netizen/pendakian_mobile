@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import '../../api_config.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -64,7 +65,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.0.101:8000/api/register"),
+        Uri.parse("${ApiConfig.baseUrl}/register"),
         headers: {
           'Accept': 'application/json',
         },
