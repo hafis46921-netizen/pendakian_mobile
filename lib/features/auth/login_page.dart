@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
   _LoginPageState createState() => _LoginPageState();
 }
@@ -12,6 +14,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
+  bool _obscurePassword = true;
 
   // Fungsi Login Terintegrasi
   Future<void> handleLogin() async {
@@ -138,7 +141,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 10),
                     TextField(
                       controller: passwordController,
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         hintText: "Masukkan Password",
                         filled: true,
@@ -146,6 +149,19 @@ class _LoginPageState extends State<LoginPage> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
                         ),
                       ),
                     ),

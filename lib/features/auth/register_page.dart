@@ -14,6 +14,10 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController confirmPasswordController = TextEditingController();
   
   bool isLoading = false;
+  
+  // --- STATE BARU UNTUK KONTROL TOMBOL MATA ---
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   // --- FUNGSI BARU: MENAMPILKAN POP-UP ---
   void _showResultDialog(String title, String message, {bool isSuccess = false}) {
@@ -75,7 +79,6 @@ class _RegisterPageState extends State<RegisterPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        // Berhasil Register
         if (!mounted) return;
         _showResultDialog(
           "Registrasi Berhasil", 
@@ -83,7 +86,6 @@ class _RegisterPageState extends State<RegisterPage> {
           isSuccess: true
         );
       } else {
-        // Gagal (Pesan dari Laravel: "Email sudah digunakan", dll)
         if (!mounted) return;
         _showResultDialog("Registrasi Gagal", data['message'] ?? "Terjadi kesalahan sistem.");
       }
@@ -148,16 +150,44 @@ class _RegisterPageState extends State<RegisterPage> {
                     buildLabel("Password"),
                     TextField(
                       controller: passwordController,
-                      obscureText: true,
-                      decoration: inputStyle("Masukkan Password"),
+                      obscureText: _obscurePassword, // Gunakan state pembungkus teks
+                      decoration: inputStyle(
+                        "Masukkan Password",
+                        // Tambahkan tombol mata khusus password pertama
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 15),
                     
                     buildLabel("Konfirmasi Password"),
                     TextField(
                       controller: confirmPasswordController,
-                      obscureText: true,
-                      decoration: inputStyle("Ulangi Password"),
+                      obscureText: _obscureConfirmPassword, // Gunakan state pembungkus teks kedua
+                      decoration: inputStyle(
+                        "Ulangi Password",
+                        // Tambahkan tombol mata khusus konfirmasi password
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                            });
+                          },
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 25),
 
@@ -222,11 +252,13 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  InputDecoration inputStyle(String hint) {
+  // --- MODIFIKASI: Ditambahkan parameter Widget? suffixIcon ---
+  InputDecoration inputStyle(String hint, {Widget? suffixIcon}) {
     return InputDecoration(
       hintText: hint,
       filled: true,
       fillColor: Colors.white,
+      suffixIcon: suffixIcon, // Memasukkan widget mata jika dipanggil
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,

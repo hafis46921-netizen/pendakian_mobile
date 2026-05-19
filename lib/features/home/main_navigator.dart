@@ -18,7 +18,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _pages = [
     HomePage(),
     HistoryPage(),
-    PendaftaranAdminPage(), // Halaman baru di index 2
+    PendaftaranAdminGunungPage(), // Halaman baru di index 2
     ProfilePage(),          // Profile geser ke index 3
   ];
 
