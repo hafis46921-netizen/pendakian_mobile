@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../profil/edit_profile_page.dart'; // Pastikan path import ini benar sesuai folder kamu
+import '../profil/edit_profile_page.dart';
+import '../profil/ubah_kata_sandi_page.dart';
+import '../profil/riwayat_pendakian_page.dart';
+import '../profil/tentang_aplikasi_page.dart';
+import '../profil/kebijakan_privasi_page.dart';
+import '../profil/syarat_ketentuan_page.dart';
+import '../profil/tema_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -20,7 +26,6 @@ class _ProfilePageState extends State<ProfilePage> {
     getUser();
   }
 
-  // Fungsi untuk ambil data dari SharedPreferences
   Future getUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
@@ -40,7 +45,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Tampilan jika belum login
     if (!isLoggedIn) {
       return Scaffold(
         body: Center(
@@ -49,57 +53,75 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               const Icon(Icons.lock_outline, size: 100, color: Colors.grey),
               const SizedBox(height: 16),
-              const Text("Kamu belum login", 
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Kamu belum login",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const Text("Silakan login untuk melihat Profil"),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () => Navigator.pushNamed(context, '/login'),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2F4B7C)),
-                child: const Text("Login Sekarang", style: TextStyle(color: Colors.white)),
-              )
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2F4B7C),
+                ),
+                child: const Text(
+                  "Login Sekarang",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
             ],
           ),
         ),
       );
     }
 
-    // Tampilan jika sudah login
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F2F6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
-          // Header Biru
           Container(
             height: 170,
             width: double.infinity,
             decoration: const BoxDecoration(color: Color(0xFF2F4B7C)),
             child: Stack(
-              clipBehavior: Clip.none, // Agar card profil bisa agak keluar
+              clipBehavior: Clip.none,
               children: [
                 Positioned(
                   top: 40,
                   left: 20,
-                  child: Image.asset('assets/images/logosummitgo.png', height: 45),
+                  child: Image.asset(
+                    'assets/images/logosummitgo.png',
+                    height: 45,
+                  ),
                 ),
                 const Positioned(
                   top: 45,
                   left: 120,
-                  child: Text("Profile", 
-                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    "Profile",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                // Card Nama & Email
                 Positioned(
-                  bottom: -15, // Dibuat melayang sedikit
+                  bottom: -15,
                   left: 20,
                   right: 20,
                   child: Container(
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[900]
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                        ),
                       ],
                     ),
                     child: Row(
@@ -107,15 +129,31 @@ class _ProfilePageState extends State<ProfilePage> {
                         CircleAvatar(
                           radius: 28,
                           backgroundColor: Colors.grey[300],
-                          child: Icon(Icons.person, size: 35, color: Colors.grey[700]),
+                          child: Icon(
+                            Icons.person,
+                            size: 35,
+                            color: Colors.grey[700],
+                          ),
                         ),
                         const SizedBox(width: 15),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text(email, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                            Text(
+                              email,
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 13,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -128,62 +166,149 @@ class _ProfilePageState extends State<ProfilePage> {
 
           const SizedBox(height: 35),
 
-          // Menu List
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Pengaturan akun", 
-                    style: TextStyle(color: Color(0xFF2F4B7C), fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Pengaturan akun",
+                    style: TextStyle(
+                      color: Color(0xFF2F4B7C),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 10),
-                  
-                  // MENU UBAH PROFIL
-                  menuItem("Ubah Profil", onTap: () async {
-                    // Berpindah ke halaman edit
-                    final bool? isUpdated = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const EditProfilePage()),
-                    );
-                    
-                    // Jika kembali dan ada status updated=true, refresh data
-                    if (isUpdated == true) {
-                      getUser();
-                    }
-                  }),
-                  
-                  menuItem("Kata Sandi", onTap: () {}),
-                  menuItem("Riwayat Pendakian", onTap: () {}),
+
+                  menuItem(
+                    "Ubah Profil",
+                    onTap: () async {
+                      final bool? isUpdated = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfilePage(),
+                        ),
+                      );
+                      if (isUpdated == true) {
+                        getUser();
+                      }
+                    },
+                  ),
+
+                  menuItem(
+                    "Kata Sandi",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UbahKataSandiPage(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  menuItem(
+                    "Riwayat Pendakian",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RiwayatPendakianPage(),
+                        ),
+                      );
+                    },
+                  ),
 
                   const SizedBox(height: 25),
 
-                  const Text("Seputar Aplikasi", 
-                    style: TextStyle(color: Color(0xFF2F4B7C), fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Seputar Aplikasi",
+                    style: TextStyle(
+                      color: Color(0xFF2F4B7C),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 10),
-                  menuItem("Tentang Aplikasi", onTap: () {}),
-                  menuItem("Kebijakan Privasi", onTap: () {}),
-                  menuItem("Syarat dan Ketentuan", onTap: () {}),
-                  menuItem("Tema", onTap: () {}),
+
+                  menuItem(
+                    "Tentang Aplikasi",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TentangAplikasiPage(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  menuItem(
+                    "Kebijakan Privasi",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const KebijakanPrivasiPage(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  menuItem(
+                    "Syarat dan Ketentuan",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SyaratKetentuanPage(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  menuItem(
+                    "Tema",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TemaPage(),
+                        ),
+                      );
+                    },
+                  ),
 
                   const SizedBox(height: 20),
 
-                  // Tombol Logout
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () async {
-                        SharedPreferences prefs = await SharedPreferences.getInstance();
+                        SharedPreferences prefs =
+                            await SharedPreferences.getInstance();
                         await prefs.clear();
                         if (!mounted) return;
-                        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/login',
+                          (route) => false,
+                        );
                       },
-                      child: const Text("Logout", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Logout",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -195,18 +320,29 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // WIDGET HELPER MENU ITEM (DIPERBAIKI)
   Widget menuItem(String title, {VoidCallback? onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10), // Sedikit rounded agar cantik
+        color: isDark ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
-        title: Text(title, style: const TextStyle(fontSize: 14)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-        onTap: onTap, // Sekarang bisa diklik
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 14,
+          color: Colors.grey,
+        ),
+        onTap: onTap,
       ),
     );
   }

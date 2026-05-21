@@ -2,7 +2,7 @@
 
 class ApiConfig {
   // Cukup ubah IP di satu baris ini saja saat kamu ganti Wi-Fi!
-  static const String _host = "192.168.100.6:8000"; 
+  static const String _host = "10.0.167.165:8000"; 
   
   // Base URL Utama untuk API
   static const String baseUrl = "http://$_host/api";
