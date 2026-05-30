@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'registrasi_tiket_page.dart'; // Pastikan import ini sudah benar
+import 'registrasi_tiket_page.dart'; 
 
 class PencarianBasecampPage extends StatelessWidget {
   final Map<String, dynamic> gunung;
@@ -8,8 +8,14 @@ class PencarianBasecampPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Deteksi status mode gelap sistem global
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Ambil list basecamp dari variabel data gunung secara aman
+    final List jalurBasecamp = gunung['basecamps'] ?? [];
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -23,15 +29,20 @@ class PencarianBasecampPage extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 220,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image, size: 50, color: Colors.grey),
+                    color: isDark ? Colors.grey[850] : Colors.grey[300],
+                    child: Icon(Icons.image, size: 50, color: isDark ? Colors.grey[600] : Colors.grey),
                   ),
+                ),
+                // Efek overlay tipis agar tombol kembali bulat selalu terlihat kontras
+                Container(
+                  height: 220,
+                  color: Colors.black.withOpacity(0.15),
                 ),
                 Positioned(
                   top: 40,
                   left: 15,
                   child: CircleAvatar(
-                    backgroundColor: Colors.black.withOpacity(0.3),
+                    backgroundColor: Colors.black.withOpacity(0.4),
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () => Navigator.pop(context),
@@ -44,62 +55,105 @@ class PencarianBasecampPage extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(15.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Card Deskripsi Gunung
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           gunung['nama'],
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2F4B7C)),
+                          style: TextStyle(
+                            fontSize: 18, 
+                            fontWeight: FontWeight.bold, 
+                            color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C),
+                          ),
                         ),
-                        const SizedBox(height: 5),
-                        const Text(
-                          "Deskripsi",
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 8),
                         Text(
-                          "Lorem ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s...",
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          "Deskripsi",
+                          style: TextStyle(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.grey[300] : Colors.black87,
+                          ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          gunung['deskripsi'] ?? "Lorem ipsum is simply dummy text of the printing and typesetting industry...",
+                          style: TextStyle(
+                            fontSize: 11, 
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         GestureDetector(
                           onTap: () {
                             // Aksi ketika klik "Baca Selengkapnya"
                           },
-                          child: const Text(
+                          child: Text(
                             "Baca Selengkapnya",
-                            style: TextStyle(fontSize: 11, color: Colors.blue, decoration: TextDecoration.underline),
+                            style: TextStyle(
+                              fontSize: 11, 
+                              color: isDark ? Colors.blue[300] : Colors.blue[700], 
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         )
                       ],
                     ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 20),
 
-                  // List Pilihan Basecamp untuk Gunung ini
-                  // Di sini kita menambahkan argumen 'context' ke dalam fungsi helper
-                  _buildBasecampCard(
-                    context: context, // <-- DI TARUH DI SINI
-                    namaBasecamp: "Basecamp Patak Banteng",
-                    weekday: gunung['weekday'] ?? "Rp 25.000",
-                    weekend: gunung['weekend'] ?? "Rp 30.000",
-                    imagePath: gunung['image'],
+                  // Label Judul List Basecamp
+                  const Text(
+                    "Pilih Jalur Basecamp Resmi",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
-                  _buildBasecampCard(
-                    context: context, // <-- DI TARUH DI SINI
-                    namaBasecamp: "Basecamp Dieng",
-                    weekday: gunung['weekday'] ?? "Rp 25.000",
-                    weekend: gunung['weekend'] ?? "Rp 30.000",
-                    imagePath: gunung['image'],
-                  ),
+                  const SizedBox(height: 10),
+
+                  // PERBAIKAN: List Pilihan Basecamp Otomatis Sesuai Gunung yang Dipilih
+                  // PERBAIKAN: List Pilihan Basecamp Otomatis Sesuai Gunung yang Dipilih
+                  jalurBasecamp.isNotEmpty
+                      ? ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: jalurBasecamp.length,
+                          itemBuilder: (context, index) {
+                            // Ambil item basecamp saat ini (berupa Map)
+                            final basecamp = jalurBasecamp[index]; 
+
+                            return _buildBasecampCard(
+                              context: context,
+                              isDark: isDark,
+                              // UBAH: Ambil field 'id' dan 'nama' dari objek basecamp
+                              basecampId: basecamp['id'] ?? 1, 
+                              namaBasecamp: "Basecamp ${basecamp['nama'] ?? 'Unknown'}",
+                              weekday: gunung['tarif_weekday'] ?? "Rp 25.000",
+                              weekend: gunung['tarif_weekend'] ?? "Rp 30.000",
+                              imagePath: gunung['image'],
+                            );
+                          },
+                        )
+                      : const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: Text("Belum ada jalur basecamp resmi tersedia.")),
+                        ),
                 ],
               ),
             ),
@@ -109,9 +163,11 @@ class PencarianBasecampPage extends StatelessWidget {
     );
   }
 
-  // Widget Helper yang sudah ditambahkan parameter BuildContext dan GestureDetector
+// Widget Helper List Card Basecamp (Ditambahkan parameter basecampId)
   Widget _buildBasecampCard({
-    required BuildContext context, // <-- Ditambahkan parameter ini agar bisa Navigasi
+    required BuildContext context, 
+    required bool isDark, 
+    required int basecampId, // <-- Tambahkan baris ini
     required String namaBasecamp,
     required String weekday,
     required String weekend,
@@ -119,13 +175,13 @@ class PencarianBasecampPage extends StatelessWidget {
   }) {
     return GestureDetector(
       onTap: () {
-        // DI TARUH DI SINI: Aksi navigasi perpindahan halaman ke RegistrasiTiketPage
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => RegistrasiTiketPage(
               gunungData: {
-                "nama": namaBasecamp, // Mengirim nama basecamp yang dipilih
+                "basecamp_id": basecampId, // <-- Oper ID ini agar mengalir sampai ke proses submit data diri!
+                "nama": namaBasecamp, 
                 "tarif_weekday": weekday,
                 "tarif_weekend": weekend,
                 "image": imagePath,
@@ -137,13 +193,13 @@ class PencarianBasecampPage extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             )
           ],
         ),
@@ -157,6 +213,11 @@ class PencarianBasecampPage extends StatelessWidget {
                 height: 130,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 130,
+                  color: isDark ? Colors.grey[850] : Colors.grey[300],
+                  child: const Icon(Icons.image, size: 40, color: Colors.grey),
+                ),
               ),
             ),
             Padding(
@@ -166,9 +227,13 @@ class PencarianBasecampPage extends StatelessWidget {
                 children: [
                   Text(
                     namaBasecamp,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2F4B7C)),
+                    style: TextStyle(
+                      fontSize: 15, 
+                      fontWeight: FontWeight.bold, 
+                      color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C),
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -176,14 +241,22 @@ class PencarianBasecampPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text("Tarif Weekday", style: TextStyle(fontSize: 11, color: Colors.grey)),
-                          Text(weekday, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 2),
+                          Text(
+                            weekday, 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87),
+                          ),
                         ],
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text("Tarif Weekend", style: TextStyle(fontSize: 11, color: Colors.grey)),
-                          Text(weekend, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 2),
+                          Text(
+                            weekend, 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87),
+                          ),
                         ],
                       ),
                     ],

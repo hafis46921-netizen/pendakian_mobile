@@ -2,8 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../../api_config.dart';
+import 'dart:async';
 
 class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
   @override
   _RegisterPageState createState() => _RegisterPageState();
 }
@@ -15,21 +18,30 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController confirmPasswordController = TextEditingController();
   
   bool isLoading = false;
-  
-  // --- STATE BARU UNTUK KONTROL TOMBOL MATA ---
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  // --- FUNGSI BARU: MENAMPILKAN POP-UP ---
+  // Menampilkan Pop-up Dialog Adaptif
   void _showResultDialog(String title, String message, {bool isSuccess = false}) {
     showDialog(
       context: context,
       barrierDismissible: false, 
       builder: (BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          content: Text(message),
+          title: Text(
+            title, 
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+          content: Text(
+            message,
+            style: TextStyle(color: isDark ? Colors.grey[300] : Colors.black),
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -38,7 +50,13 @@ class _RegisterPageState extends State<RegisterPage> {
                   Navigator.pop(context); // Kembali ke Login jika registrasi berhasil
                 }
               },
-              child: const Text("OK", style: TextStyle(color: Color(0xFF2F4B7C))),
+              child: Text(
+                "OK", 
+                style: TextStyle(
+                  color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
@@ -47,13 +65,11 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> handleRegister() async {
-    // 1. Validasi Password
     if (passwordController.text != confirmPasswordController.text) {
       _showResultDialog("Password Tidak Cocok", "Konfirmasi password harus sama dengan password.");
       return;
     }
 
-    // 2. Validasi Input Kosong
     if (namaController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) {
       _showResultDialog("Field Kosong", "Semua field wajib diisi sebelum mendaftar.");
       return;
@@ -64,18 +80,24 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
+      print("Mengirim request registrasi ke: ${ApiConfig.baseUrl}/register");
+
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}/register"),
         headers: {
           'Accept': 'application/json',
+          'Content-Type': 'application/json', // Ditambahkan agar Laravel tahu ini JSON
         },
-        body: {
-          "name": namaController.text,
-          "email": emailController.text,
+        body: jsonEncode({ // Membungkus data menggunakan jsonEncode
+          "name": namaController.text.trim(),
+          "email": emailController.text.trim(),
           "password": passwordController.text,
           "password_confirmation": confirmPasswordController.text,
-        },
-      );
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      print("======= STATUS CODE REGISTER: ${response.statusCode} =======");
+      print("======= RESPONSE BODY: ${response.body} =======");
 
       final data = jsonDecode(response.body);
 
@@ -88,11 +110,20 @@ class _RegisterPageState extends State<RegisterPage> {
         );
       } else {
         if (!mounted) return;
-        _showResultDialog("Registrasi Gagal", data['message'] ?? "Terjadi kesalahan sistem.");
+        // Menampilkan pesan error spesifik dari Laravel jika ada (misal email sudah terdaftar)
+        String errorMessage = data['message'] ?? "Terjadi kesalahan sistem.";
+        if (data['errors'] != null) {
+          errorMessage = data['errors'].toString();
+        }
+        _showResultDialog("Registrasi Gagal", errorMessage);
       }
+    } on TimeoutException catch (_) {
+      if (!mounted) return;
+      _showResultDialog("Waktu Tunggu Habis", "Koneksi ke server timeout. Cek jaringan kamu.");
     } catch (e) {
       if (!mounted) return;
-      _showResultDialog("Masalah Koneksi", "Tidak dapat terhubung ke server Laravel. Cek koneksi Wi-Fi atau IP laptop.");
+      print("Error detail pada handleRegister: $e");
+      _showResultDialog("Masalah Koneksi", "Tidak dapat terhubung ke server. Pastikan IP backend benar.");
     } finally {
       if (mounted) {
         setState(() {
@@ -104,12 +135,16 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Deteksi status mode gelap sistem
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF2F4B7C),
+      // Latar belakang atas mengikuti warna khas SummitGo (Menyesuaikan saat dark mode)
+      backgroundColor: isDark ? const Color(0xFF1E3253) : const Color(0xFF2F4B7C),
       body: Column(
         children: [
           // Header Logo
-          Container(
+          SizedBox(
             height: 200,
             width: double.infinity,
             child: Center(
@@ -127,38 +162,41 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Theme.of(context).scaffoldBackgroundColor,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
               ),
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    buildLabel("Nama"),
+                    buildLabel("Nama", isDark),
                     TextField(
                       controller: namaController,
-                      decoration: inputStyle("Masukkan Nama"),
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                      decoration: inputStyle("Masukkan Nama", isDark),
                     ),
                     const SizedBox(height: 15),
                     
-                    buildLabel("Email"),
+                    buildLabel("Email", isDark),
                     TextField(
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: inputStyle("Masukkan Email"),
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                      decoration: inputStyle("Masukkan Email", isDark),
                     ),
                     const SizedBox(height: 15),
                     
-                    buildLabel("Password"),
+                    buildLabel("Password", isDark),
                     TextField(
                       controller: passwordController,
-                      obscureText: _obscurePassword, // Gunakan state pembungkus teks
+                      obscureText: _obscurePassword,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                       decoration: inputStyle(
                         "Masukkan Password",
-                        // Tambahkan tombol mata khusus password pertama
+                        isDark,
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: Colors.grey,
+                            color: isDark ? Colors.grey[400] : Colors.grey,
                           ),
                           onPressed: () {
                             setState(() {
@@ -170,17 +208,18 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 15),
                     
-                    buildLabel("Konfirmasi Password"),
+                    buildLabel("Konfirmasi Password", isDark),
                     TextField(
                       controller: confirmPasswordController,
-                      obscureText: _obscureConfirmPassword, // Gunakan state pembungkus teks kedua
+                      obscureText: _obscureConfirmPassword,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                       decoration: inputStyle(
                         "Ulangi Password",
-                        // Tambahkan tombol mata khusus konfirmasi password
+                        isDark,
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                            color: Colors.grey,
+                            color: isDark ? Colors.grey[400] : Colors.grey,
                           ),
                           onPressed: () {
                             setState(() {
@@ -197,7 +236,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2F4B7C),
+                          backgroundColor: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -210,7 +249,10 @@ class _RegisterPageState extends State<RegisterPage> {
                               width: 20,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
-                          : const Text("Sign Up", style: TextStyle(color: Colors.white)),
+                          : const Text(
+                              "Sign Up", 
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
                       ),
                     ),
 
@@ -220,13 +262,16 @@ class _RegisterPageState extends State<RegisterPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("Sudah punya akun? "),
+                        Text(
+                          "Sudah punya akun? ",
+                          style: TextStyle(color: isDark ? Colors.grey[300] : Colors.black87),
+                        ),
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: const Text(
+                          child: Text(
                             "Log In",
                             style: TextStyle(
-                              color: Colors.blue,
+                              color: isDark ? const Color(0xFF6A93D4) : Colors.blue,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -243,23 +288,32 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget buildLabel(String text) {
+  // Widget Label Adaptif
+  Widget buildLabel(String text, bool isDark) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 8.0),
-        child: Text(text, style: const TextStyle(fontSize: 12)),
+        child: Text(
+          text, 
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? Colors.grey[300] : Colors.black87,
+          ),
+        ),
       ),
     );
   }
 
-  // --- MODIFIKASI: Ditambahkan parameter Widget? suffixIcon ---
-  InputDecoration inputStyle(String hint, {Widget? suffixIcon}) {
+  // Input Style Adaptif
+  InputDecoration inputStyle(String hint, bool isDark, {Widget? suffixIcon}) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey),
       filled: true,
-      fillColor: Colors.white,
-      suffixIcon: suffixIcon, // Memasukkan widget mata jika dipanggil
+      // Berubah jadi abu-abu arang arsitektural saat dark mode
+      fillColor: isDark ? Colors.grey[850] : Colors.white,
+      suffixIcon: suffixIcon,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,

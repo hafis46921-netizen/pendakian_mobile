@@ -17,8 +17,12 @@ class _PendaftaranAdminGunungPageState extends State<PendaftaranAdminGunungPage>
 
   @override
   Widget build(BuildContext context) {
+    // Deteksi apakah sedang dalam mode gelap
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      // FIX: Menghapus warna F5F5F5 kaku agar mengikuti tema global aplikasi
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -38,7 +42,8 @@ class _PendaftaranAdminGunungPageState extends State<PendaftaranAdminGunungPage>
                 Container(
                   height: 220,
                   width: double.infinity,
-                  color: Colors.black.withOpacity(0.2),
+                  // FIX: Opasitas overlay sedikit digelapkan di dark mode agar teks header lebih stand out
+                  color: Colors.black.withOpacity(isDark ? 0.4 : 0.2),
                 ),
                 Positioned(
                   top: 40,
@@ -66,17 +71,25 @@ class _PendaftaranAdminGunungPageState extends State<PendaftaranAdminGunungPage>
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  // FIX: Menggunakan cardColor agar otomatis berwarna abu-abu gelap saat dark mode
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    )
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildField("Username", _usernameController, "Masukkan Username"),
-                    _buildField("Email", _emailController, "Masukkan Email", keyboardType: TextInputType.emailAddress),
-                    _buildField("Password", _passwordController, "Masukkan Password", obscureText: true),
-                    _buildField("Konfirmasi Password", _confirmPasswordController, "Ulangi Password", obscureText: true),
-                    _buildField("Nama Lengkap", _namaLengkapController, "Masukkan Nama Lengkap"),
+                    _buildField("Username", _usernameController, "Masukkan Username", isDark),
+                    _buildField("Email", _emailController, "Masukkan Email", isDark, keyboardType: TextInputType.emailAddress),
+                    _buildField("Password", _passwordController, "Masukkan Password", isDark, obscureText: true),
+                    _buildField("Konfirmasi Password", _confirmPasswordController, "Ulangi Password", isDark, obscureText: true),
+                    _buildField("Nama Lengkap", _namaLengkapController, "Masukkan Nama Lengkap", isDark),
                     
                     const SizedBox(height: 20),
                     
@@ -85,7 +98,8 @@ class _PendaftaranAdminGunungPageState extends State<PendaftaranAdminGunungPage>
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2F4B7C),
+                          // FIX: Menyesuaikan warna tombol utama saat mode gelap
+                          backgroundColor: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -113,7 +127,7 @@ class _PendaftaranAdminGunungPageState extends State<PendaftaranAdminGunungPage>
                             ),
                           );
                         },
-                        child: const Text("Selanjutnya", style: TextStyle(color: Colors.white)),
+                        child: const Text("Selanjutnya", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -126,26 +140,40 @@ class _PendaftaranAdminGunungPageState extends State<PendaftaranAdminGunungPage>
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller, String hint, {bool obscureText = false, TextInputType? keyboardType}) {
+  // FIX: Menambahkan parameter bool isDark agar komponen input field adaptif terhadap warna tema
+  Widget _buildField(String label, TextEditingController controller, String hint, bool isDark, {bool obscureText = false, TextInputType? keyboardType}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2F4B7C), fontSize: 13)),
+          // FIX: Warna label dinamis (Putih soft saat gelap, biru tua saat terang)
+          Text(
+            label, 
+            style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              color: isDark ? Colors.grey[300] : const Color(0xFF2F4B7C), 
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: controller,
             obscureText: obscureText,
             keyboardType: keyboardType,
+            // FIX: Mengatur style teks input agar warnanya kontras di kedua mode
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
             decoration: InputDecoration(
               hintText: hint,
+              hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400]),
               filled: true,
-              fillColor: Colors.grey[100],
+              // FIX: Mengganti grey[100] dengan warna yang lebih gelap di mode malam agar nyaman di mata
+              fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
               ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
         ],

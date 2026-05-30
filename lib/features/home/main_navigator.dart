@@ -7,6 +7,8 @@ import 'pendaftaran_admin_page.dart'; // Import halaman pendaftaran yang baru di
 import '../auth/login_page.dart'; // Import halaman login kamu
 
 class MainNavigation extends StatefulWidget {
+  const MainNavigation({super.key});
+
   @override
   _MainNavigationState createState() => _MainNavigationState();
 }

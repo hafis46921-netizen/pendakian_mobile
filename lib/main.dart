@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/routes.dart';
 import 'features/profil/theme_notifier.dart';
-import 'features/home/home_page.dart';
 
 final ThemeNotifier themeNotifier = ThemeNotifier(); // Inisialisasi ThemeNotifier global
 

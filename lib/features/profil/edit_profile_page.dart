@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart'; // Tambahkan ini
+import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:io';
 import '../../api_config.dart'; // Import konfigurasi API untuk URL dinamis
@@ -21,9 +21,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController dobController = TextEditingController();
   final TextEditingController usernameController = TextEditingController();
 
-  String? selectedGender;
+  String? selectedGender; 
   String? selectedAlamat;
-  File? _imageFile; // Untuk menyimpan file foto yang dipilih
+  File? _imageFile; 
   final ImagePicker _picker = ImagePicker();
   String? _currentImageUrl;
 
@@ -46,7 +46,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       phoneController.text = prefs.getString('phone') ?? "";
       dobController.text = prefs.getString('dob') ?? "";
       usernameController.text = prefs.getString('username') ?? "";
-      _currentImageUrl = prefs.getString('foto'); // Ambil path foto dari prefs
+      _currentImageUrl = prefs.getString('foto'); 
 
       String? savedGender = prefs.getString('gender');
       if (genderOptions.contains(savedGender)) selectedGender = savedGender;
@@ -58,19 +58,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
   }
 
-  // --- FUNGSI AMBIL FOTO DARI GALERI ---
   Future<void> _pickImage() async {
     final XFile? selected = await _picker.pickImage(source: ImageSource.gallery);
     if (selected != null) {
       setState(() {
         _imageFile = File(selected.path);
       });
-      // Langsung upload foto saat dipilih
       _uploadPhoto(File(selected.path));
     }
   }
 
-  // --- FUNGSI UPLOAD FOTO KE SERVER ---
   Future<void> _uploadPhoto(File file) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
@@ -92,7 +89,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
-      await prefs.setString('foto', data['data']['foto']); // Simpan path baru
+      await prefs.setString('foto', data['data']['foto']); 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Foto berhasil diperbarui")));
     }
   }
@@ -111,16 +109,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  // --- UPDATE DATABASE (TEXT) ---
   Future<void> _updateDatabase() async {
     setState(() => isLoading = true);
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
 
     try {
-      // Gunakan PUT dan JSON Encode agar sinkron dengan ProfileController
+      // FIX: Mengganti IP static manual ke ApiConfig.baseUrl agar sinkron
       final response = await http.put(
-        Uri.parse("http://192.168.0.101/api/user/profile"), 
+        Uri.parse("${ApiConfig.baseUrl}/user/profile"), 
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -148,10 +145,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
         if (!mounted) return;
         Navigator.pop(context, true);
       } else {
-        print("Gagal: ${response.body}");
+        debugPrint("Gagal: ${response.body}");
       }
     } catch (e) {
-      print("Error: $e");
+      debugPrint("Error: $e");
     } finally {
       setState(() => isLoading = false);
     }
@@ -159,12 +156,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Deteksi status mode gelap global
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F2F6),
+      // FIX: Menghapus warna kaku 0xFFF1F2F6 agar mengikuti background canvas tema aktif
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2F4B7C),
+        // FIX: Warna AppBar menyesuaikan mode malam (menggunakan warna surface gelap bawaan)
+        backgroundColor: isDark ? Theme.of(context).cardColor : const Color(0xFF2F4B7C),
         title: const Text("Ubah Profil", style: TextStyle(color: Colors.white, fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
       ),
       body: isLoading 
         ? const Center(child: CircularProgressIndicator()) 
@@ -172,53 +175,59 @@ class _EditProfilePageState extends State<EditProfilePage> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                _buildProfilePictureSection(), // Widget foto yang sudah diupdate
+                _buildProfilePictureSection(isDark), 
                 const SizedBox(height: 20),
                 _buildSectionCard(
                   title: "Informasi Profil",
+                  isDark: isDark,
                   children: [
-                    _buildInputField("Nama Lengkap", nameController),
-                    _buildInputField("No Telp", phoneController, isPhone: true),
-                    _buildDropdownField("Alamat", selectedAlamat, alamatOptions, (val) => setState(() => selectedAlamat = val)),
-                    _buildDateField("Tanggal Lahir", dobController, () => _selectDate(context)),
-                    _buildDropdownField("Jenis Kelamin", selectedGender, genderOptions, (val) => setState(() => selectedGender = val)),
+                    _buildInputField("Nama Lengkap", nameController, isDark),
+                    _buildInputField("No Telp", phoneController, isDark, isPhone: true),
+                    _buildDropdownField("Alamat", selectedAlamat, alamatOptions, isDark, (val) => setState(() => selectedAlamat = val)),
+                    _buildDateField("Tanggal Lahir", dobController, isDark, () => _selectDate(context)),
+                    _buildDropdownField("Jenis Kelamin", selectedGender, genderOptions, isDark, (val) => setState(() => selectedGender = val)),
                   ],
                 ),
                 const SizedBox(height: 20),
                 _buildSectionCard(
                   title: "Email & Username",
+                  isDark: isDark,
                   children: [
-                    _buildInputField("Email", emailController, enabled: false),
-                    _buildInputField("Username", usernameController),
+                    _buildInputField("Email", emailController, isDark, enabled: false),
+                    _buildInputField("Username", usernameController, isDark),
                   ],
                 ),
                 const SizedBox(height: 30),
-                _buildSaveButton(),
+                _buildSaveButton(isDark),
               ],
             ),
           ),
     );
   }
 
-  // --- PERBAIKAN WIDGET FOTO ---
-  Widget _buildProfilePictureSection() {
+  // --- WIDGET FOTO ADAPTIF ---
+  Widget _buildProfilePictureSection(bool isDark) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor, // FIX: Menggunakan warna card dinamis
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
           CircleAvatar(
             radius: 50,
-            backgroundColor: const Color(0xFFE0E0E0),
+            backgroundColor: isDark ? Colors.grey[800] : const Color(0xFFE0E0E0),
             backgroundImage: _imageFile != null 
                 ? FileImage(_imageFile!) 
                 : (_currentImageUrl != null 
-                    ? NetworkImage("http://192.168.0.101/storage/$_currentImageUrl") as ImageProvider
+                    // FIX: Menggunakan ApiConfig.baseUrl untuk memuat gambar dari storage
+                    ? NetworkImage("${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$_currentImageUrl") as ImageProvider
                     : null),
             child: (_imageFile == null && _currentImageUrl == null)
-                ? const Icon(Icons.person, size: 60, color: Colors.white)
+                ? Icon(Icons.person, size: 60, color: isDark ? Colors.grey[400] : Colors.white)
                 : null,
           ),
           Positioned(
@@ -228,7 +237,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               onTap: _pickImage,
               child: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(color: Color(0xFF2F4B7C), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C), // FIX: Tombol kamera adaptif
+                  shape: BoxShape.circle,
+                ),
                 child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
               ),
             ),
@@ -238,41 +250,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  // --- WIDGET HELPERS ---
-
-  Widget _buildProfilePicture() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: const CircleAvatar(
-        radius: 50,
-        backgroundColor: Color(0xFFE0E0E0),
-        child: Icon(Icons.person, size: 60, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildInputField(String label, TextEditingController controller, {bool enabled = true, bool isPhone = false}) {
+  // --- WIDGET FIELD ADAPTIF ---
+  Widget _buildInputField(String label, TextEditingController controller, bool isDark, {bool enabled = true, bool isPhone = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
           const SizedBox(height: 5),
           TextField(
             controller: controller,
             enabled: enabled,
             keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
             inputFormatters: isPhone ? [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(13)] : [],
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            // FIX: Mengatur warna teks agar kontras sesuai mode
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFFF1F2F6),
+              // FIX: Menyesuaikan fill warna kolom input di mode gelap
+              fillColor: isDark ? Colors.grey[850] : const Color(0xFFF1F2F6),
               contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-              counterText: "", // Menghilangkan tulisan counter angka di bawah
+              counterText: "", 
             ),
           ),
         ],
@@ -280,21 +280,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _buildDropdownField(String label, String? value, List<String> items, ValueChanged<String?> onChanged) {
+  Widget _buildDropdownField(String label, String? value, List<String> items, bool isDark, ValueChanged<String?> onChanged) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
           const SizedBox(height: 5),
           DropdownButtonFormField<String>(
-            value: value,
-            items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
+            initialValue: value,
+            // FIX: Mengubah warna background pop-up dropdown menu saat di-klik
+            dropdownColor: isDark ? Colors.grey[900] : Colors.white,
+            style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87),
+            items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87)))).toList(),
             onChanged: onChanged,
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFFF1F2F6),
+              fillColor: isDark ? Colors.grey[850] : const Color(0xFFF1F2F6),
               contentPadding: const EdgeInsets.symmetric(horizontal: 15),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
             ),
@@ -304,23 +307,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _buildDateField(String label, TextEditingController controller, VoidCallback onTap) {
+  Widget _buildDateField(String label, TextEditingController controller, bool isDark, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
           const SizedBox(height: 5),
           TextField(
             controller: controller,
-            readOnly: true, // Tidak bisa diketik manual
-            onTap: onTap, // Muncul kalender saat di-tap
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            readOnly: true, 
+            onTap: onTap, 
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFFF1F2F6),
-              suffixIcon: const Icon(Icons.calendar_month, color: Colors.grey, size: 20),
+              fillColor: isDark ? Colors.grey[850] : const Color(0xFFF1F2F6),
+              suffixIcon: Icon(Icons.calendar_month, color: isDark ? Colors.grey[400] : Colors.grey, size: 20),
               contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
             ),
@@ -330,15 +333,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _buildSectionCard({required String title, required List<Widget> children}) {
+  // --- WIDGET CARD SECTIONS ADAPTIF ---
+  Widget _buildSectionCard({required String title, required List<Widget> children, required bool isDark}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor, // FIX: Menggunakan warna card dinamis
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Color(0xFF2F4B7C), fontWeight: FontWeight.bold)),
+          Text(
+            title, 
+            style: TextStyle(
+              color: isDark ? Colors.grey[300] : const Color(0xFF2F4B7C), // FIX: Warna judul seksi adaptif
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 15),
           ...children,
         ],
@@ -346,12 +359,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _buildSaveButton() {
+  // --- WIDGET TOMBOL SIMPAN ADAPTIF ---
+  Widget _buildSaveButton(bool isDark) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2F4B7C),
+          backgroundColor: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C), // FIX: Warna biru adaptif
           padding: const EdgeInsets.symmetric(vertical: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),

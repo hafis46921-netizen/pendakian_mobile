@@ -1,7 +1,6 @@
 // lib/features/profile/tema_page.dart
 import 'package:flutter/material.dart';
 import '../../main.dart'; // Pastikan path ke main.dart benar untuk mengambil themeNotifier
-import 'theme_notifier.dart';
 
 class TemaPage extends StatefulWidget {
   const TemaPage({super.key});
@@ -28,7 +27,7 @@ class _TemaPageState extends State<TemaPage> {
         child: Container(
           decoration: BoxDecoration(
             // Jika dark mode, ganti background card jadi abu-abu gelap, jika tidak jadi putih
-            color: themeNotifier.isDarkMode ? Colors.grey[900] : Colors.white, 
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
