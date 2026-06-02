@@ -7,6 +7,7 @@ import '../features/home/daftar_gunung_page.dart';
 import '../features/auth/splash_screen.dart';
 import '../features/ticket/invoice_pembayaran_page.dart';
 import '../features/home/history_page.dart';
+import '../features/auth/forgot_password_page.dart';
 
 class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
@@ -17,5 +18,6 @@ class AppRoutes {
     '/ticket': (context) => DaftarGunungPage(),
     '/invoice_pembayaran': (context) => const InvoicePembayaranPage(),
     '/history': (context) => const HistoryPage(),
+    '/forgot_password': (context) => const ForgotPasswordPage(),
   };
 }

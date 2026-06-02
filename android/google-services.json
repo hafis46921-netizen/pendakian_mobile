@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "150860744573",
+    "project_id": "summitgo-eb07f",
+    "storage_bucket": "summitgo-eb07f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:150860744573:android:af90c2dedf990e25396e14",
+        "android_client_info": {
+          "package_name": "com.summitgo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "150860744573-88f8ohi817s1l3a896qg6jh1uo31ueev.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.summitgo",
+            "certificate_hash": "86e9bc0f473510507dd633b2103398bfc26056e9"
+          }
+        },
+        {
+          "client_id": "150860744573-obqkarhhii5fj85q7tmq94i7gg4748gt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAAinc9zVFYIxPdjvOEMFd50PaLkFnKGI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "150860744573-obqkarhhii5fj85q7tmq94i7gg4748gt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
