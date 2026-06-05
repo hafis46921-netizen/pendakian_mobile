@@ -1,11 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:io';
-import '../../api_config.dart'; // Import konfigurasi API untuk URL dinamis
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../../api_config.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -15,22 +14,19 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController dobController = TextEditingController();
-  final TextEditingController usernameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
-  String? selectedGender; 
-  String? selectedAlamat;
-  File? _imageFile; 
-  final ImagePicker _picker = ImagePicker();
-  String? _currentImageUrl;
+  // Controller Form Lengkap
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
 
-  final List<String> genderOptions = ["Laki-Laki", "Perempuan"];
-  final List<String> alamatOptions = ["Indramayu", "Cirebon", "Majalengka", "Kuningan", "Lainnya"];
-
-  bool isLoading = true;
+  File? _imageFile;
+  String? _currentFotoUrl;
+  bool _isLoading = false;
+  bool _isDataChanged = false; // Flag untuk mendeteksi perubahan data
 
   @override
   void initState() {
@@ -41,337 +37,371 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _loadUserData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      nameController.text = prefs.getString('name') ?? "";
-      emailController.text = prefs.getString('email') ?? "";
-      phoneController.text = prefs.getString('phone') ?? "";
-      dobController.text = prefs.getString('dob') ?? "";
-      usernameController.text = prefs.getString('username') ?? "";
-      _currentImageUrl = prefs.getString('foto'); 
-
-      String? savedGender = prefs.getString('gender');
-      if (genderOptions.contains(savedGender)) selectedGender = savedGender;
-
-      String? savedAlamat = prefs.getString('alamat');
-      if (alamatOptions.contains(savedAlamat)) selectedAlamat = savedAlamat;
-
-      isLoading = false;
+      _nameController.text = prefs.getString('name') ?? '';
+      _usernameController.text = prefs.getString('username') ?? '';
+      _emailController.text = prefs.getString('email') ?? '';
+      _phoneController.text = prefs.getString('no_hp') ?? '';
+      _addressController.text = prefs.getString('alamat') ?? '';
+      _currentFotoUrl = prefs.getString('foto');
     });
   }
 
   Future<void> _pickImage() async {
-    final XFile? selected = await _picker.pickImage(source: ImageSource.gallery);
-    if (selected != null) {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+
+    if (pickedFile != null) {
       setState(() {
-        _imageFile = File(selected.path);
+        _imageFile = File(pickedFile.path);
+        _isDataChanged = true;
       });
-      _uploadPhoto(File(selected.path));
     }
   }
 
-  Future<void> _uploadPhoto(File file) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    var request = http.MultipartRequest(
-      'POST',
-      Uri.parse("${ApiConfig.baseUrl}/user/profile/foto"),
-    );
-
-    request.headers.addAll({
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
+    setState(() {
+      _isLoading = true;
     });
 
-    request.files.add(await http.MultipartFile.fromPath('foto', file.path));
-
-    var streamedResponse = await request.send();
-    var response = await http.Response.fromStream(streamedResponse);
-
-    if (response.statusCode == 200) {
-      var data = jsonDecode(response.body);
-      await prefs.setString('foto', data['data']['foto']); 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Foto berhasil diperbarui")));
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(2000),
-      firstDate: DateTime(1950),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        dobController.text = "${picked.day}/${picked.month}/${picked.year}";
-      });
-    }
-  }
-
-  Future<void> _updateDatabase() async {
-    setState(() => isLoading = true);
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
-
     try {
-      // FIX: Mengganti IP static manual ke ApiConfig.baseUrl agar sinkron
-      final response = await http.put(
-        Uri.parse("${ApiConfig.baseUrl}/user/profile"), 
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          "name": nameController.text,
-          "email": emailController.text,
-          "phone": phoneController.text,
-          "alamat": selectedAlamat ?? "",
-          "dob": dobController.text,
-          "gender": selectedGender ?? "",
-          "username": usernameController.text,
-        }),
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('token');
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}/profile/update'),
       );
 
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      });
+
+      request.fields['name'] = _nameController.text;
+      request.fields['username'] = _usernameController.text;
+      request.fields['email'] = _emailController.text;
+      request.fields['no_hp'] = _phoneController.text;
+      request.fields['alamat'] = _addressController.text;
+
+      if (_imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('foto', _imageFile!.path),
+        );
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
       if (response.statusCode == 200) {
-        await prefs.setString('name', nameController.text);
-        await prefs.setString('phone', phoneController.text);
-        await prefs.setString('alamat', selectedAlamat ?? "");
-        await prefs.setString('gender', selectedGender ?? "");
-        await prefs.setString('dob', dobController.text);
-        await prefs.setString('username', usernameController.text);
+        var responseData = json.decode(response.body);
+
+        // Simpan semua data baru ke local storage
+        await prefs.setString('name', _nameController.text);
+        await prefs.setString('username', _usernameController.text);
+        await prefs.setString('email', _emailController.text);
+        await prefs.setString('no_hp', _phoneController.text);
+        await prefs.setString('alamat', _addressController.text);
+
+        if (responseData['user'] != null &&
+            responseData['user']['foto'] != null) {
+          await prefs.setString('foto', responseData['user']['foto']);
+        }
 
         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profil berhasil diperbarui!')),
+        );
+
+        _isDataChanged = true;
+        // Keluar dengan aman membawa status true
         Navigator.pop(context, true);
       } else {
-        debugPrint("Gagal: ${response.body}");
+        throw Exception('Gagal memperbarui profil di server');
       }
     } catch (e) {
-      debugPrint("Error: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Deteksi status mode gelap global
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      // FIX: Menghapus warna kaku 0xFFF1F2F6 agar mengikuti background canvas tema aktif
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        // FIX: Warna AppBar menyesuaikan mode malam (menggunakan warna surface gelap bawaan)
-        backgroundColor: isDark ? Theme.of(context).cardColor : const Color(0xFF2F4B7C),
-        title: const Text("Ubah Profil", style: TextStyle(color: Colors.white, fontSize: 18)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-      ),
-      body: isLoading 
-        ? const Center(child: CircularProgressIndicator()) 
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildProfilePictureSection(isDark), 
-                const SizedBox(height: 20),
-                _buildSectionCard(
-                  title: "Informasi Profil",
-                  isDark: isDark,
-                  children: [
-                    _buildInputField("Nama Lengkap", nameController, isDark),
-                    _buildInputField("No Telp", phoneController, isDark, isPhone: true),
-                    _buildDropdownField("Alamat", selectedAlamat, alamatOptions, isDark, (val) => setState(() => selectedAlamat = val)),
-                    _buildDateField("Tanggal Lahir", dobController, isDark, () => _selectDate(context)),
-                    _buildDropdownField("Jenis Kelamin", selectedGender, genderOptions, isDark, (val) => setState(() => selectedGender = val)),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _buildSectionCard(
-                  title: "Email & Username",
-                  isDark: isDark,
-                  children: [
-                    _buildInputField("Email", emailController, isDark, enabled: false),
-                    _buildInputField("Username", usernameController, isDark),
-                  ],
-                ),
-                const SizedBox(height: 30),
-                _buildSaveButton(isDark),
-              ],
-            ),
-          ),
-    );
-  }
-
-  // --- WIDGET FOTO ADAPTIF ---
-  Widget _buildProfilePictureSection(bool isDark) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor, // FIX: Menggunakan warna card dinamis
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: isDark ? Colors.grey[800] : const Color(0xFFE0E0E0),
-            backgroundImage: _imageFile != null 
-                ? FileImage(_imageFile!) 
-                : (_currentImageUrl != null 
-                    // FIX: Menggunakan ApiConfig.baseUrl untuk memuat gambar dari storage
-                    ? NetworkImage("${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$_currentImageUrl") as ImageProvider
-                    : null),
-            child: (_imageFile == null && _currentImageUrl == null)
-                ? Icon(Icons.person, size: 60, color: isDark ? Colors.grey[400] : Colors.white)
-                : null,
-          ),
-          Positioned(
-            bottom: 0,
-            right: MediaQuery.of(context).size.width * 0.3,
-            child: InkWell(
-              onTap: _pickImage,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C), // FIX: Tombol kamera adaptif
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- WIDGET FIELD ADAPTIF ---
-  Widget _buildInputField(String label, TextEditingController controller, bool isDark, {bool enabled = true, bool isPhone = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
-          const SizedBox(height: 5),
-          TextField(
-            controller: controller,
-            enabled: enabled,
-            keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
-            inputFormatters: isPhone ? [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(13)] : [],
-            // FIX: Mengatur warna teks agar kontras sesuai mode
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
-            decoration: InputDecoration(
-              filled: true,
-              // FIX: Menyesuaikan fill warna kolom input di mode gelap
-              fillColor: isDark ? Colors.grey[850] : const Color(0xFFF1F2F6),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-              counterText: "", 
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDropdownField(String label, String? value, List<String> items, bool isDark, ValueChanged<String?> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
-          const SizedBox(height: 5),
-          DropdownButtonFormField<String>(
-            initialValue: value,
-            // FIX: Mengubah warna background pop-up dropdown menu saat di-klik
-            dropdownColor: isDark ? Colors.grey[900] : Colors.white,
-            style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87),
-            items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87)))).toList(),
-            onChanged: onChanged,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: isDark ? Colors.grey[850] : const Color(0xFFF1F2F6),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 15),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDateField(String label, TextEditingController controller, bool isDark, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
-          const SizedBox(height: 5),
-          TextField(
-            controller: controller,
-            readOnly: true, 
-            onTap: onTap, 
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: isDark ? Colors.grey[850] : const Color(0xFFF1F2F6),
-              suffixIcon: Icon(Icons.calendar_month, color: isDark ? Colors.grey[400] : Colors.grey, size: 20),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- WIDGET CARD SECTIONS ADAPTIF ---
-  Widget _buildSectionCard({required String title, required List<Widget> children, required bool isDark}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor, // FIX: Menggunakan warna card dinamis
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title, 
+    // SOLUSI ERROR LAYER.DART: Menggunakan cara pop scope yang aman tanpa mematikan paksa 'canPop'
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop && _isDataChanged) {
+          // Jika keluar lewat gesture back dan data telah berubah, state dikirim lewat callback sistem jika didukung
+          return;
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          backgroundColor: isDark
+              ? const Color(0xFF1E1E1E)
+              : const Color(0xFF2F4B7C),
+          elevation: 0,
+          title: const Text(
+            "Ubah Profil",
             style: TextStyle(
-              color: isDark ? Colors.grey[300] : const Color(0xFF2F4B7C), // FIX: Warna judul seksi adaptif
+              color: Colors.white,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 15),
-          ...children,
-        ],
+          iconTheme: const IconThemeData(color: Colors.white),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () {
+              // Jika user menekan tombol back di appbar, paksa kirim nilainya true agar profile langsung me-refresh
+              Navigator.pop(context, true);
+            },
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      // Jendela Foto Profil (Avatar)
+                      Center(
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 55,
+                              backgroundColor: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
+                              backgroundImage: _imageFile != null
+                                  ? FileImage(_imageFile!) as ImageProvider
+                                  : (_currentFotoUrl != null &&
+                                        _currentFotoUrl!.isNotEmpty)
+                                  ? NetworkImage(
+                                          "${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$_currentFotoUrl",
+                                        )
+                                        as ImageProvider
+                                  : null,
+                              child:
+                                  (_imageFile == null &&
+                                      (_currentFotoUrl == null ||
+                                          _currentFotoUrl!.isEmpty))
+                                  ? Icon(
+                                      Icons.person,
+                                      size: 60,
+                                      color: isDark
+                                          ? Colors.grey[400]
+                                          : const Color(0xFF2F4B7C),
+                                    )
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: _pickImage,
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF2F4B7C),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+
+                      // Input Nama Lengkap
+                      TextFormField(
+                        controller: _nameController,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                        decoration: _inputDecoration(
+                          "Nama Lengkap",
+                          Icons.person_outline,
+                          isDark,
+                        ),
+                        onChanged: (_) => _isDataChanged = true,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Nama lengkap tidak boleh kosong'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Input Username
+                      TextFormField(
+                        controller: _usernameController,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                        decoration: _inputDecoration(
+                          "Username",
+                          Icons.alternate_email_rounded,
+                          isDark,
+                        ),
+                        onChanged: (_) => _isDataChanged = true,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Username tidak boleh kosong'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Input Email
+                      TextFormField(
+                        controller: _emailController,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: _inputDecoration(
+                          "Email",
+                          Icons.email_outlined,
+                          isDark,
+                        ),
+                        onChanged: (_) => _isDataChanged = true,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Email tidak boleh kosong'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Input No Telepon / HP
+                      TextFormField(
+                        controller: _phoneController,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                        keyboardType: TextInputType.phone,
+                        decoration: _inputDecoration(
+                          "Nomor Telepon",
+                          Icons.phone_android_rounded,
+                          isDark,
+                        ),
+                        onChanged: (_) => _isDataChanged = true,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Nomor telepon tidak boleh kosong'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Input Alamat Tempat Tinggal
+                      TextFormField(
+                        controller: _addressController,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                        maxLines: 3,
+                        decoration: _inputDecoration(
+                          "Alamat Tempat Tinggal",
+                          Icons.home_outlined,
+                          isDark,
+                        ),
+                        onChanged: (_) => _isDataChanged = true,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Alamat tidak boleh kosong'
+                            : null,
+                      ),
+                      const SizedBox(height: 35),
+
+                      // Tombol Simpan Perubahan
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _saveProfile,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2F4B7C),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            "Simpan Perubahan",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
   }
 
-  // --- WIDGET TOMBOL SIMPAN ADAPTIF ---
-  Widget _buildSaveButton(bool isDark) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C), // FIX: Warna biru adaptif
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  InputDecoration _inputDecoration(String label, IconData icon, bool isDark) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(
+        color: isDark ? Colors.grey[400] : Colors.grey[700],
+        fontSize: 14,
+      ),
+      prefixIcon: Icon(icon, color: const Color(0xFF2F4B7C), size: 22),
+      filled: true,
+      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey[50],
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: isDark
+              ? (Colors.grey[800] ?? const Color(0xFF424242))
+              : (Colors.grey[300] ?? const Color(0xFFE0E0E0)),
         ),
-        onPressed: _updateDatabase,
-        child: const Text("Simpan Perubahan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF2F4B7C), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 }

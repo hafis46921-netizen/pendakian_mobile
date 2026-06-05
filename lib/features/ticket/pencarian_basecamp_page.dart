@@ -1,39 +1,65 @@
 import 'package:flutter/material.dart';
-import 'registrasi_tiket_page.dart'; 
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'registrasi_tiket_page.dart';
+import '../../api_config.dart';
 
 class PencarianBasecampPage extends StatelessWidget {
   final Map<String, dynamic> gunung;
 
   const PencarianBasecampPage({super.key, required this.gunung});
 
+  // Mengambil data Basecamp secara dinamis berdasarkan ID Gunung dari API Laravel
+  Future<List<dynamic>> fetchBasecampsByGunung(int gunungId) async {
+    try {
+      final response = await http
+          .get(Uri.parse("${ApiConfig.baseUrl}/basecamps?gunung_id=$gunungId"))
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final decodedData = jsonDecode(response.body);
+        
+        if (decodedData is Map && decodedData.containsKey('data')) {
+          return decodedData['data'];
+        }
+        if (decodedData is List) {
+          return decodedData;
+        }
+      }
+    } catch (e) {
+      debugPrint("Koneksi API Basecamp Gagal: $e");
+    }
+    return [];
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Deteksi status mode gelap sistem global
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Ambil list basecamp dari variabel data gunung secara aman
-    final List jalurBasecamp = gunung['basecamps'] ?? [];
+    int gunungId = gunung['id'] ?? 0;
+    String fotoGunung = gunung['foto_utama'] ?? "";
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header Image dengan Tombol Back (Stack)
+            // Header Image dengan Tombol Back
             Stack(
               children: [
-                Image.asset(
-                  gunung['image'],
+                SizedBox(
                   height: 220,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 220,
-                    color: isDark ? Colors.grey[850] : Colors.grey[300],
-                    child: Icon(Icons.image, size: 50, color: isDark ? Colors.grey[600] : Colors.grey),
-                  ),
+                  child: fotoGunung.startsWith('assets/')
+                      ? Image.asset(fotoGunung, fit: BoxFit.cover)
+                      : Image.network(
+                          "${ApiConfig.baseUrl}/storage/$fotoGunung",
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: isDark ? Colors.grey[850] : Colors.grey[300],
+                            child: Icon(Icons.image, size: 50, color: isDark ? Colors.grey[600] : Colors.grey),
+                          ),
+                        ),
                 ),
-                // Efek overlay tipis agar tombol kembali bulat selalu terlihat kontras
                 Container(
                   height: 220,
                   color: Colors.black.withOpacity(0.15),
@@ -76,10 +102,10 @@ class PencarianBasecampPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          gunung['nama'],
+                          gunung['nama'] ?? "Gunung",
                           style: TextStyle(
-                            fontSize: 18, 
-                            fontWeight: FontWeight.bold, 
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                             color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C),
                           ),
                         ),
@@ -87,34 +113,20 @@ class PencarianBasecampPage extends StatelessWidget {
                         Text(
                           "Deskripsi",
                           style: TextStyle(
-                            fontSize: 12, 
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.grey[300] : Colors.black87,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          gunung['deskripsi'] ?? "Lorem ipsum is simply dummy text of the printing and typesetting industry...",
+                          gunung['deskripsi'] ?? "Belum ada deskripsi untuk gunung ini.",
                           style: TextStyle(
-                            fontSize: 11, 
+                            fontSize: 11,
                             color: isDark ? Colors.grey[400] : Colors.grey[600],
                             height: 1.5,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        GestureDetector(
-                          onTap: () {
-                            // Aksi ketika klik "Baca Selengkapnya"
-                          },
-                          child: Text(
-                            "Baca Selengkapnya",
-                            style: TextStyle(
-                              fontSize: 11, 
-                              color: isDark ? Colors.blue[300] : Colors.blue[700], 
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        )
                       ],
                     ),
                   ),
@@ -127,33 +139,50 @@ class PencarianBasecampPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
 
-                  // PERBAIKAN: List Pilihan Basecamp Otomatis Sesuai Gunung yang Dipilih
-                  // PERBAIKAN: List Pilihan Basecamp Otomatis Sesuai Gunung yang Dipilih
-                  jalurBasecamp.isNotEmpty
-                      ? ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: jalurBasecamp.length,
-                          itemBuilder: (context, index) {
-                            // Ambil item basecamp saat ini (berupa Map)
-                            final basecamp = jalurBasecamp[index]; 
+                  // List Pilihan Basecamp Menggunakan FutureBuilder Dari Server
+                  FutureBuilder<List<dynamic>>(
+                    future: fetchBasecampsByGunung(gunungId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 30.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
 
-                            return _buildBasecampCard(
-                              context: context,
-                              isDark: isDark,
-                              // UBAH: Ambil field 'id' dan 'nama' dari objek basecamp
-                              basecampId: basecamp['id'] ?? 1, 
-                              namaBasecamp: "Basecamp ${basecamp['nama'] ?? 'Unknown'}",
-                              weekday: gunung['tarif_weekday'] ?? "Rp 25.000",
-                              weekend: gunung['tarif_weekend'] ?? "Rp 30.000",
-                              imagePath: gunung['image'],
-                            );
-                          },
-                        )
-                      : const Padding(
+                      List<dynamic> jalurBasecamp = snapshot.data ?? [];
+
+                      if (jalurBasecamp.isEmpty) {
+                        return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 20),
                           child: Center(child: Text("Belum ada jalur basecamp resmi tersedia.")),
-                        ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: jalurBasecamp.length,
+                        itemBuilder: (context, index) {
+                          final basecamp = jalurBasecamp[index];
+
+                          // Konversi harga tiket ke representasi teks IDR
+                          int harga = basecamp['harga_tiket'] ?? 0;
+                          String formattedHarga = harga > 0 ? "Rp ${harga.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}" : "Rp 25.000";
+
+                          return _buildBasecampCard(
+                            context: context,
+                            isDark: isDark,
+                            basecampId: basecamp['id'] ?? 0,
+                            namaBasecamp: "Basecamp ${basecamp['nama'] ?? 'Unknown'}",
+                            weekday: formattedHarga,
+                            weekend: formattedHarga, // Mengikuti data tunggal 'harga_tiket' dari skema kamu
+                            imagePath: basecamp['foto_utama'] ?? fotoGunung,
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -163,11 +192,10 @@ class PencarianBasecampPage extends StatelessWidget {
     );
   }
 
-// Widget Helper List Card Basecamp (Ditambahkan parameter basecampId)
   Widget _buildBasecampCard({
-    required BuildContext context, 
-    required bool isDark, 
-    required int basecampId, // <-- Tambahkan baris ini
+    required BuildContext context,
+    required bool isDark,
+    required int basecampId,
     required String namaBasecamp,
     required String weekday,
     required String weekend,
@@ -180,8 +208,8 @@ class PencarianBasecampPage extends StatelessWidget {
           MaterialPageRoute(
             builder: (context) => RegistrasiTiketPage(
               gunungData: {
-                "basecamp_id": basecampId, // <-- Oper ID ini agar mengalir sampai ke proses submit data diri!
-                "nama": namaBasecamp, 
+                "basecamp_id": basecampId,
+                "nama": namaBasecamp,
                 "tarif_weekday": weekday,
                 "tarif_weekend": weekend,
                 "image": imagePath,
@@ -208,16 +236,19 @@ class PencarianBasecampPage extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: Image.asset(
-                imagePath,
+              child: SizedBox(
                 height: 130,
                 width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 130,
-                  color: isDark ? Colors.grey[850] : Colors.grey[300],
-                  child: const Icon(Icons.image, size: 40, color: Colors.grey),
-                ),
+                child: imagePath.startsWith('assets/')
+                    ? Image.asset(imagePath, fit: BoxFit.cover)
+                    : Image.network(
+                        "${ApiConfig.baseUrl}/storage/$imagePath",
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: isDark ? Colors.grey[850] : Colors.grey[300],
+                          child: const Icon(Icons.image, size: 40, color: Colors.grey),
+                        ),
+                      ),
               ),
             ),
             Padding(
@@ -228,8 +259,8 @@ class PencarianBasecampPage extends StatelessWidget {
                   Text(
                     namaBasecamp,
                     style: TextStyle(
-                      fontSize: 15, 
-                      fontWeight: FontWeight.bold, 
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
                       color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C),
                     ),
                   ),
@@ -243,8 +274,11 @@ class PencarianBasecampPage extends StatelessWidget {
                           const Text("Tarif Weekday", style: TextStyle(fontSize: 11, color: Colors.grey)),
                           const SizedBox(height: 2),
                           Text(
-                            weekday, 
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87),
+                            weekday,
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: isDark ? Colors.white : Colors.black87),
                           ),
                         ],
                       ),
@@ -254,8 +288,11 @@ class PencarianBasecampPage extends StatelessWidget {
                           const Text("Tarif Weekend", style: TextStyle(fontSize: 11, color: Colors.grey)),
                           const SizedBox(height: 2),
                           Text(
-                            weekend, 
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87),
+                            weekend,
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: isDark ? Colors.white : Colors.black87),
                           ),
                         ],
                       ),

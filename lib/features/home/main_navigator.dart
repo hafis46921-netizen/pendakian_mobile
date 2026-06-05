@@ -1,10 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart'; // Ditambahkan untuk komponen UI khas iPhone
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_page.dart';
 import 'history_page.dart';
 import 'profil_page.dart';
-import 'pendaftaran_admin_page.dart'; // Import halaman pendaftaran yang baru dibuat
-import '../auth/login_page.dart'; // Import halaman login kamu
+import 'pendaftaran_admin_page.dart'; 
+import '../auth/login_page.dart'; 
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -16,34 +18,29 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  // Daftar halaman diperbarui menjadi 4 halaman
   final List<Widget> _pages = [
     HomePage(),
     HistoryPage(),
-    PendaftaranAdminGunungPage(), // Halaman baru di index 2
-    ProfilePage(),          // Profile geser ke index 3
+    PendaftaranAdminGunungPage(), 
+    ProfilePage(),          
   ];
 
-  // Fungsi navigasi dengan pengecekan login
+  // Fungsi navigasi dengan pengecekan token login bawaan kamu
   void _onItemTapped(int index) async {
-    // Jika user menekan Transaksi (1), Daftar Admin (2), atau Profil (3)
     if (index == 1 || index == 2 || index == 3) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('token');
 
-      // Cek apakah token ada
       if (token == null || token.isEmpty) {
         if (!mounted) return;
-        // Jika tidak ada token, arahkan ke Login
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
+          CupertinoPageRoute(builder: (context) => const LoginPage()), // Diubah ke CupertinoPageRoute agar animasi slide transisi halaman khas iOS
         );
-        return; // Berhenti di sini, jangan pindah tab
+        return; 
       }
     }
 
-    // Jika sudah login atau memilih Home, baru pindah index
     setState(() {
       _currentIndex = index;
     });
@@ -51,35 +48,74 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Skema warna dekoratif transparan (Frosted Glass) khas iOS
+    final backgroundColor = isDark 
+        ? const Color(0xCC1A1A1A) // Hitam transparan saat dark mode
+        : const Color(0xFCEFEEF6); // Abu-abu terang bersih transparan khas iOS Light Mode
+
+    final activeColor = isDark 
+        ? const Color(0xFF6A93D4) 
+        : const Color(0xFF2F4B7C); // Warna biru khas SummitGo
+
     return Scaffold(
+      // Mengizinkan konten halaman ditarik ke bawah melampaui batas TabBar (efek tembus pandang blur)
+      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: const Color(0xFF2F4B7C),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        onTap: _onItemTapped, // Gunakan fungsi pengecekan di sini
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: "Beranda",
+      bottomNavigationBar: ClipRect(
+        // Efek Blur kaca di atas konten scrollable
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white10 : const Color(0x4D000000), // Garis pemisah tipis khas iPhone
+                  width: 0.3,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              top: false, 
+              child: CupertinoTabBar(
+                currentIndex: _currentIndex, // Tetap pertahankan yang ini
+                onTap: _onItemTapped,
+                backgroundColor: Colors.transparent, 
+                activeColor: activeColor,
+                inactiveColor: isDark ? Colors.grey[500]! : const Color(0xFF8E8E93), 
+                iconSize: 24,
+                // BARIS YANG DUPLIKAT DI SINI SUDAH DIHAPUS
+                items: [
+                  BottomNavigationBarItem(
+                    icon: const Icon(CupertinoIcons.house), 
+                    activeIcon: const Icon(CupertinoIcons.house_fill), 
+                    label: "Beranda",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(CupertinoIcons.ticket),
+                    activeIcon: const Icon(CupertinoIcons.ticket_fill),
+                    label: "Transaksi",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(CupertinoIcons.person_badge_plus),
+                    activeIcon: const Icon(CupertinoIcons.person_badge_plus_fill),
+                    label: "Admin",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(CupertinoIcons.person_circle),
+                    activeIcon: const Icon(CupertinoIcons.person_circle_fill),
+                    label: "Profil",
+                  ),
+                ],
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.confirmation_number),
-            label: "Transaksi",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_ind), // Ikon pendaftaran/admin
-            label: "Admin",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: "Profil",
-          ),
-        ],
+        ),
       ),
     );
   }

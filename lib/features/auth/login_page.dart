@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // 🛠️ IMPORT PACKAGE BARU
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../api_config.dart';
 
 class LoginPage extends StatefulWidget {
@@ -21,29 +21,26 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId:
-        '150860744573-obqkarhhii5fj85q7tmq94i7gg4748gt.apps.googleusercontent.com', // ◄── GANTI DENGAN WEB CLIENT ID KAMU
+    clientId: '150860744573-obqkarhhii5fj85q7tmq94i7gg4748gt.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
 
-  // 🛠️ FUNGSI HANDLER GOOGLE SIGN IN
+  // 🛠️ FUNGSI HANDLER GOOGLE SIGN IN (UPDATED)
   Future<void> handleGoogleSignIn() async {
     setState(() {
       isLoading = true;
     });
 
     try {
-      // 1. Memicu dialog pop-up akun Google di HP / Web
+      // 1. Memicu dialog pop-up akun Google
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        // User membatalkan pemilihan akun Google
         setState(() => isLoading = false);
         return;
       }
 
       // 2. Mengambil detail autentikasi (ID Token)
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
 
       if (idToken == null) {
@@ -65,11 +62,16 @@ class _LoginPageState extends State<LoginPage> {
           .timeout(const Duration(seconds: 15));
 
       print("======= STATUS CODE GOOGLE LOGIN: ${response.statusCode} =======");
+      final data = jsonDecode(response.body);
 
+      // KONDISI A: Akun Terdaftar & Berhasil Login (200 / 201)
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        // Cek jika backend mengirim flag custom bahwa akun belum terdaftar (Alternatif selain pakai HTTP 404)
+        if (data['registered'] == false) {
+          _pindahKeHalamanRegister(data['name'], data['email']);
+          return;
+        }
 
-        // 4. Simpan session token autentikasi lokal
         SharedPreferences prefs = await SharedPreferences.getInstance();
         String? token = data['token'] ?? data['access_token'];
         if (token != null) {
@@ -87,8 +89,20 @@ class _LoginPageState extends State<LoginPage> {
 
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/');
-      } else {
-        final data = jsonDecode(response.body);
+      } 
+      // KONDISI B: Akun Belum Terdaftar (Contoh jika Backend melempar HTTP 404)
+      else if (response.statusCode == 404) {
+        print("Akun Google belum terdaftar di sistem. Mengarahkan ke registrasi...");
+        
+        // Ambil data profil Google yang didapat dari response backend (jika dikirim oleh backend)
+        // Atau bisa juga langsung ambil dari objek `googleUser` milik Flutter
+        String googleName = data['name'] ?? googleUser.displayName ?? "";
+        String googleEmail = data['email'] ?? googleUser.email;
+
+        _pindahKeHalamanRegister(googleName, googleEmail);
+      } 
+      // KONDISI C: Terjadi Error Lain dari Backend
+      else {
         throw Exception(data['message'] ?? "Gagal autentikasi via backend.");
       }
     } catch (e) {
@@ -109,6 +123,30 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     }
+  }
+
+  // Fungsi pembantu untuk mengarahkan ke halaman register dengan membawa argumen
+  void _pindahKeHalamanRegister(String name, String email) {
+    if (!mounted) return;
+    
+    // Tampilkan pesan info sejenak ke user
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Akun Google Anda belum terdaftar. Silakan lengkapi registrasi."),
+        backgroundColor: Colors.blue,
+      ),
+    );
+
+    // Navigasi ke Halaman Register sambil melempar data Google
+    Navigator.pushNamed(
+      context, 
+      '/register', 
+      arguments: {
+        'name': name,
+        'email': email,
+        'isFromGoogle': true,
+      },
+    );
   }
 
   Future<void> handleLogin() async {
@@ -137,9 +175,7 @@ class _LoginPageState extends State<LoginPage> {
           )
           .timeout(const Duration(seconds: 10));
 
-      print(
-        "======= STATUS CODE LOGIN FROM SERVER: ${response.statusCode} =======",
-      );
+      print("======= STATUS CODE LOGIN FROM SERVER: ${response.statusCode} =======");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -234,16 +270,14 @@ class _LoginPageState extends State<LoginPage> {
                         child: Image.asset(
                           'assets/images/logosummitgo.png',
                           height: 80,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(
-                                Icons.terrain,
-                                size: 80,
-                                color: Colors.white,
-                              ),
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.terrain,
+                            size: 80,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(25),
@@ -254,9 +288,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight - 180 > 0
-                            ? constraints.maxHeight - 180
-                            : 400,
+                        minHeight: constraints.maxHeight - 180 > 0 ? constraints.maxHeight - 180 : 400,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,9 +313,7 @@ class _LoginPageState extends State<LoginPage> {
                               if (value == null || value.trim().isEmpty) {
                                 return "Email tidak boleh kosong";
                               }
-                              if (!RegExp(
-                                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                              ).hasMatch(value.trim())) {
+                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
                                 return "Format email tidak valid";
                               }
                               return null;
@@ -295,17 +325,12 @@ class _LoginPageState extends State<LoginPage> {
                                 color: isDark ? Colors.grey[500] : Colors.grey,
                               ),
                               filled: true,
-                              fillColor: isDark
-                                  ? Colors.grey[850]
-                                  : const Color(0xFFF5F5F5),
+                              fillColor: isDark ? Colors.grey[850] : const Color(0xFFF5F5F5),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -340,34 +365,22 @@ class _LoginPageState extends State<LoginPage> {
                                 color: isDark ? Colors.grey[500] : Colors.grey,
                               ),
                               filled: true,
-                              fillColor: isDark
-                                  ? Colors.grey[850]
-                                  : const Color(0xFFF5F5F5),
+                              fillColor: isDark ? Colors.grey[850] : const Color(0xFFF5F5F5),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey,
+                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  color: isDark ? Colors.grey[400] : Colors.grey,
                                 ),
-                                onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                ),
+                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                               ),
                             ),
                           ),
                           const SizedBox(height: 12),
-                          
                           Align(
                             alignment: Alignment.centerRight,
                             child: GestureDetector(
@@ -378,27 +391,20 @@ class _LoginPageState extends State<LoginPage> {
                                 "Lupa Password?",
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isDark
-                                      ? const Color(0xFF6A93D4)
-                                      : const Color(0xFF2F4B7C),
+                                  color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ),
                           const SizedBox(height: 30),
-
                           SizedBox(
                             width: double.infinity,
                             height: 48,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark
-                                    ? const Color(0xFF3A5A98)
-                                    : const Color(0xFF2F4B7C),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                backgroundColor: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                               onPressed: isLoading ? null : handleLogin,
                               child: isLoading
@@ -420,33 +426,24 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                             ),
                           ),
-
                           const SizedBox(height: 25),
                           Center(
                             child: Text(
                               "atau login dengan",
                               style: TextStyle(
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
+                                color: isDark ? Colors.grey[400] : Colors.grey[600],
                                 fontSize: 12,
                               ),
                             ),
                           ),
                           const SizedBox(height: 16),
-
-                          // 🛠️ FIX: TOMBOL GOOGLE PREMIUM BERWARNA-WARNI MENGGUNAKAN NETWORK IMAGE RESMI
                           SizedBox(
                             width: double.infinity,
                             height: 48,
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                side: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 backgroundColor: isDark ? Colors.grey[900] : Colors.white,
                               ),
                               onPressed: isLoading ? null : handleGoogleSignIn,
@@ -486,28 +483,22 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 40),
-
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
                                 "Belum punya akun? ",
                                 style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey[300]
-                                      : Colors.black87,
+                                  color: isDark ? Colors.grey[300] : Colors.black87,
                                   fontSize: 13,
                                 ),
                               ),
                               GestureDetector(
-                                onTap: () =>
-                                    Navigator.pushNamed(context, '/register'),
+                                onTap: () => Navigator.pushNamed(context, '/register'),
                                 child: Text(
                                   "Sign Up",
                                   style: TextStyle(
-                                    color: isDark
-                                        ? const Color(0xFF6A93D4)
-                                        : Colors.blue,
+                                    color: isDark ? const Color(0xFF6A93D4) : Colors.blue,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
                                   ),

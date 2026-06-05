@@ -21,6 +21,21 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  @override
+  void dispose() {
+    // Mencegah memory leak dengan menghancurkan controller saat page ditutup
+    namaController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  // Validasi format email menggunakan Regex
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
   // Menampilkan Pop-up Dialog Adaptif
   void _showResultDialog(String title, String message, {bool isSuccess = false}) {
     showDialog(
@@ -65,13 +80,32 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> handleRegister() async {
-    if (passwordController.text != confirmPasswordController.text) {
-      _showResultDialog("Password Tidak Cocok", "Konfirmasi password harus sama dengan password.");
+    final nama = namaController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
+
+    // 1. Validasi Field Kosong
+    if (nama.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showResultDialog("Field Kosong", "Semua field wajib diisi sebelum mendaftar.");
       return;
     }
 
-    if (namaController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) {
-      _showResultDialog("Field Kosong", "Semua field wajib diisi sebelum mendaftar.");
+    // 2. Validasi Format Email
+    if (!_isValidEmail(email)) {
+      _showResultDialog("Email Tidak Valid", "Silakan masukkan format email yang benar.");
+      return;
+    }
+
+    // 3. Validasi Panjang Password (Standar Laravel min 8 karakter)
+    if (password.length < 8) {
+      _showResultDialog("Password Terlalu Pendek", "Password minimal harus terdiri dari 8 karakter.");
+      return;
+    }
+
+    // 4. Validasi Kecocokan Password
+    if (password != confirmPassword) {
+      _showResultDialog("Password Tidak Cocok", "Konfirmasi password harus sama dengan password.");
       return;
     }
 
@@ -86,13 +120,13 @@ class _RegisterPageState extends State<RegisterPage> {
         Uri.parse("${ApiConfig.baseUrl}/register"),
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json', // Ditambahkan agar Laravel tahu ini JSON
+          'Content-Type': 'application/json', 
         },
-        body: jsonEncode({ // Membungkus data menggunakan jsonEncode
-          "name": namaController.text.trim(),
-          "email": emailController.text.trim(),
-          "password": passwordController.text,
-          "password_confirmation": confirmPasswordController.text,
+        body: jsonEncode({ 
+          "name": nama,
+          "email": email,
+          "password": password,
+          "password_confirmation": confirmPassword,
         }),
       ).timeout(const Duration(seconds: 10));
 
@@ -110,11 +144,17 @@ class _RegisterPageState extends State<RegisterPage> {
         );
       } else {
         if (!mounted) return;
-        // Menampilkan pesan error spesifik dari Laravel jika ada (misal email sudah terdaftar)
+        
         String errorMessage = data['message'] ?? "Terjadi kesalahan sistem.";
-        if (data['errors'] != null) {
-          errorMessage = data['errors'].toString();
+        
+        // Membaca object error dari Laravel agar tidak tampil berantakan
+        if (data['errors'] != null && data['errors'] is Map) {
+          var firstErrorList = (data['errors'] as Map).values.first;
+          if (firstErrorList is List && firstErrorList.isNotEmpty) {
+            errorMessage = firstErrorList.first.toString();
+          }
         }
+        
         _showResultDialog("Registrasi Gagal", errorMessage);
       }
     } on TimeoutException catch (_) {
@@ -135,11 +175,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Deteksi status mode gelap sistem
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      // Latar belakang atas mengikuti warna khas SummitGo (Menyesuaikan saat dark mode)
       backgroundColor: isDark ? const Color(0xFF1E3253) : const Color(0xFF2F4B7C),
       body: Column(
         children: [
@@ -172,6 +210,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextField(
                       controller: namaController,
                       style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                      textInputAction: TextInputAction.next, // Alihkan ke field berikutnya di keyboard
                       decoration: inputStyle("Masukkan Nama", isDark),
                     ),
                     const SizedBox(height: 15),
@@ -181,6 +220,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
                       style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                      textInputAction: TextInputAction.next, // Alihkan ke field berikutnya di keyboard
                       decoration: inputStyle("Masukkan Email", isDark),
                     ),
                     const SizedBox(height: 15),
@@ -190,6 +230,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       controller: passwordController,
                       obscureText: _obscurePassword,
                       style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                      textInputAction: TextInputAction.next, // Alihkan ke field berikutnya di keyboard
                       decoration: inputStyle(
                         "Masukkan Password",
                         isDark,
@@ -213,6 +254,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       controller: confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
                       style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                      textInputAction: TextInputAction.done, // Tombol Selesai di keyboard
+                      onSubmitted: (_) => isLoading ? null : handleRegister(), // Submit form saat klik tombol enter keyboard
                       decoration: inputStyle(
                         "Ulangi Password",
                         isDark,
@@ -305,18 +348,26 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // Input Style Adaptif
+  // Input Style Adaptif dengan border yang lebih tegas di Dark Mode
   InputDecoration inputStyle(String hint, bool isDark, {Widget? suffixIcon}) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey),
       filled: true,
-      // Berubah jadi abu-abu arang arsitektural saat dark mode
-      fillColor: isDark ? Colors.grey[850] : Colors.white,
+      fillColor: isDark ? const Color(0xFF252525) : Colors.white,
       suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide: isDark ? BorderSide(color: Colors.grey[800]!, width: 1) : BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: isDark ? BorderSide(color: Colors.grey[800]!, width: 1) : BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C), width: 1.5),
       ),
     );
   }

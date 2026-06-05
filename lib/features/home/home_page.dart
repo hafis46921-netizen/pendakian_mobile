@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../ticket/pencarian_basecamp_page.dart'; 
-import 'daftar_gunung_page.dart'; 
-import '../../api_config.dart'; 
+import '../ticket/pencarian_basecamp_page.dart';
+import 'daftar_gunung_page.dart';
+import '../../api_config.dart';
 import 'dart:async';
 
 class HomePage extends StatefulWidget {
@@ -24,93 +24,37 @@ class _HomePageState extends State<HomePage> {
   String name = "Pendaki";
   String email = "pendaki@email.com";
   bool isLoggedIn = false;
+  bool _isApiLoading = true; // Flag status loading data gunung
 
-  // Daftar gambar banner promo
+  // --- FITUR PENCARIAN & REKOMENDASI ---
+  final TextEditingController _searchController = TextEditingController();
+  final OverlayPortalController _tooltipController = OverlayPortalController(); 
+  final LayerLink _layerLink = LayerLink(); 
+  
+  List<dynamic> semuaGunungData = []; 
+  List<dynamic> rekomendasiSaran = []; 
+  String queryPencarian = "";
+
   final List<String> bannerImages = [
     "assets/images/puncak_ciremai.jpg",
     "assets/images/gunung_prau.jpg",
     "assets/images/puncak_ciremai.jpg",
   ];
 
-  // PERBAIKAN: Menambah 2 gunung (Total 6) dengan struktur data objek basecamp lengkap
   final List<Map<String, dynamic>> gunungLokal = [
     {
       "nama": "Gunung Ciremai",
       "lokasi": "Jawa Barat",
-      "image": "assets/images/puncak_ciremai.jpg",
-      "deskripsi": "Gunung tertinggi di Jawa Barat dengan tantangan jalur pendakian yang eksotis dan kaya akan keanekaragaman hayati.",
-      "tarif_weekday": "Rp 50.000",
-      "tarif_weekend": "Rp 75.000",
-      "basecamps": [
-        {"id": 1, "nama": "Apuy"},
-        {"id": 2, "nama": "Palutungan"},
-        {"id": 3, "nama": "Linggajati"},
-        {"id": 4, "nama": "Linggasana"},
-        {"id": 5, "nama": "Sadarehe"}
-      ]
+      "foto_utama": "assets/images/puncak_ciremai.jpg",
+      "deskripsi": "Gunung tertinggi di Jawa Barat dengan tantangan jalur pendakian yang eksotis.",
+      "ketinggian": 3078,
     },
     {
       "nama": "Gunung Prau",
       "lokasi": "Jawa Tengah",
-      "image": "assets/images/gunung_prau.jpg",
-      "deskripsi": "Terkenal dengan pemandangan golden sunrise terbaik di Asia Tenggara dan bukit teletubbies yang memanjakan mata.",
-      "tarif_weekday": "Rp 25.000",
-      "tarif_weekend": "Rp 30.000",
-      "basecamps": [
-        {"id": 6, "nama": "Patak Banteng"},
-        {"id": 7, "nama": "Dieng"},
-        {"id": 8, "nama": "Kalilembu"}
-      ]
-    },
-    {
-      "nama": "Gunung Semeru",
-      "lokasi": "Jawa Timur",
-      "image": "assets/images/puncak_ciremai.jpg",
-      "deskripsi": "Gunung tertinggi di Pulau Jawa dengan keindahan danau Ranu Kumbolo yang melegenda.",
-      "tarif_weekday": "Rp 22.500",
-      "tarif_weekend": "Rp 32.500",
-      "basecamps": [
-        {"id": 9, "nama": "Ranu Pane"}
-      ]
-    },
-    {
-      "nama": "Gunung Merbabu",
-      "lokasi": "Jawa Tengah",
-      "image": "assets/images/gunung_prau.jpg",
-      "deskripsi": "Gunung dengan hamparan sabana hijau yang sangat luas dan pemandangan Gunung Merapi yang megah.",
-      "tarif_weekday": "Rp 30.000",
-      "tarif_weekend": "Rp 40.000",
-      "basecamps": [
-        {"id": 10, "nama": "Selo"},
-        {"id": 11, "nama": "Suwanting"},
-        {"id": 12, "nama": "Wekas"}
-      ]
-    },
-    {
-      "nama": "Gunung Sindoro",
-      "lokasi": "Jawa Tengah",
-      "image": "assets/images/gunung_prau.jpg",
-      "deskripsi": "Kembaran Gunung Sumbing yang memiliki padang edelweiss luas di dekat puncak dan kawah aktif menakjubkan.",
-      "tarif_weekday": "Rp 25.000",
-      "tarif_weekend": "Rp 30.000",
-      "basecamps": [
-        {"id": 13, "nama": "Kledung"},
-        {"id": 14, "nama": "Alang-Alang Sewu"},
-        {"id": 15, "nama": "Bansari"}
-      ]
-    },
-    {
-      "nama": "Gunung Lawu",
-      "lokasi": "Jawa Timur",
-      "image": "assets/images/puncak_ciremai.jpg",
-      "deskripsi": "Gunung sarat sejarah di perbatasan Jateng-Jatim, terkenal dengan warung tertinggi Mbok Yem.",
-      "tarif_weekday": "Rp 20.000",
-      "tarif_weekend": "Rp 25.000",
-      "basecamps": [
-        {"id": 16, "nama": "Cetho"},
-        {"id": 17, "nama": "Cemoro Sewu"},
-        {"id": 18, "nama": "Cemoro Kandang"}
-      ]
+      "foto_utama": "assets/images/gunung_prau.jpg",
+      "deskripsi": "Terkenal dengan pemandangan golden sunrise terbaik di Asia Tenggara.",
+      "ketinggian": 2565,
     },
   ];
 
@@ -118,15 +62,23 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     getUser();
+    initFetchSemuaGunung(); // Ambil data SEKALI SAJA di awal
 
     _timer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
+      // 1. Cek apakah widget masih aktif, kalau tidak langsung matikan timer
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
       if (_currentPage < bannerImages.length - 1) {
         _currentPage++;
       } else {
         _currentPage = 0;
       }
 
-      if (_pageController.hasClients) {
+      // 2. Cek ekstra hasClients DAN haveDimensions agar Flutter Web tidak crash
+      if (_pageController.hasClients && _pageController.position.haveDimensions) {
         _pageController.animateToPage(
           _currentPage,
           duration: const Duration(milliseconds: 350),
@@ -140,6 +92,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _timer?.cancel();
     _pageController.dispose();
+    _searchController.dispose(); 
     super.dispose();
   }
 
@@ -159,19 +112,83 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // Helper Format Tanggal Indonesia (Pengganti Widget Cuaca)
+  String _getFormattedDate() {
+    final now = DateTime.now();
+    final hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    final bulan = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Juni', 
+      'Juli', 'Agust', 'Sept', 'Okt', 'Nov', 'Des'
+    ];
+    
+    // DayOfWeek bawaan Dart dimulai dari 1 (Senin) s/d 7 (Minggu)
+    String namaHari = hari[now.weekday % 7];
+    String namaBulan = bulan[now.month - 1];
+    
+    return "$namaHari, ${now.day} $namaBulan";
+  }
+
+  // Mengambil data awal untuk list grid dan fitur pencarian
+  Future<void> initFetchSemuaGunung() async {
+    setState(() {
+      _isApiLoading = true;
+    });
+    
+    final data = await getGunung();
+    
+    if (mounted) {
+      setState(() {
+        // Jika API timeout/gagal, otomatis gunakan data gunungLokal agar tidak kosong
+        semuaGunungData = data.isNotEmpty ? data : gunungLokal;
+        _isApiLoading = false;
+      });
+    }
+  }
+
   Future<List<dynamic>> getGunung() async {
     try {
       final response = await http
           .get(Uri.parse("${ApiConfig.baseUrl}/gunungs"))
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 5)); // Batas timeout aman
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final decodedData = jsonDecode(response.body);
+        if (decodedData is Map && decodedData.containsKey('data')) {
+          return decodedData['data'];
+        }
+        if (decodedData is List) {
+          return decodedData;
+        }
       }
     } catch (e) {
-      debugPrint("Koneksi API Gagal, memuat data lokal: $e");
+      debugPrint("Koneksi API Gagal (Menggunakan Fallback Lokal): $e");
     }
     return [];
+  }
+
+  void filterRekomendasi(String query) {
+    setState(() {
+      queryPencarian = query;
+      if (query.isEmpty) {
+        rekomendasiSaran = [];
+        _tooltipController.hide();
+      } else {
+        rekomendasiSaran = semuaGunungData
+            .where(
+              (gunung) => gunung['nama'].toString().toLowerCase().contains(
+                    query.toLowerCase(),
+                  ),
+            )
+            .take(3)
+            .toList();
+
+        if (rekomendasiSaran.isNotEmpty) {
+          _tooltipController.show();
+        } else {
+          _tooltipController.hide();
+        }
+      }
+    });
   }
 
   @override
@@ -184,15 +201,20 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. HEADER AREA DENGAN LENGKUBAN MODEREN
+            // 1. HEADER AREA & SEARCH BAR
             Stack(
+              clipBehavior: Clip.none,
               children: [
                 Container(
-                  height: 190,
+                  height: 220,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF2F4B7C),
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1E3A8A), Color(0xFF2F4B7C)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.vertical(
-                      bottom: Radius.elliptical(200, 30),
+                      bottom: Radius.elliptical(200, 25),
                     ),
                   ),
                 ),
@@ -204,52 +226,152 @@ class _HomePageState extends State<HomePage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Image.asset(
-                              'assets/images/logosummitgo.png',
-                              height: 35,
-                            ),
-                            const Icon(
-                              Icons.notifications_none_outlined,
-                              color: Colors.white,
-                              size: 26,
+                            Image.asset('assets/images/logosummitgo.png', height: 35),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.notifications_none_outlined, color: Colors.white, size: 24),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 25),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
+                        const SizedBox(height: 15),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Halo, Mau Mendaki Kemana?",
+                                  style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7), letterSpacing: 0.5),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  name,
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                              ],
+                            ),
+                            
+                            // --- WIDGET PENGGANTI: TANGGAL DINAMIS ---
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.local_fire_department,
-                                color: Colors.orange,
-                                size: 20,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month_outlined, color: Colors.white70, size: 15),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    _getFormattedDate(),
+                                    style: const TextStyle(
+                                      color: Colors.white, 
+                                      fontSize: 11, 
+                                      fontWeight: FontWeight.w500
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  "Terdapat promo yang belum kamu ambil",
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white70
-                                        : const Color(0xFF2F4B7C).withOpacity(0.8),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // SEARCH BAR OVERLAY
+                        CompositedTransformTarget(
+                          link: _layerLink,
+                          child: OverlayPortal(
+                            controller: _tooltipController,
+                            overlayChildBuilder: (BuildContext context) {
+                              return CompositedTransformFollower(
+                                link: _layerLink,
+                                targetAnchor: Alignment.bottomLeft,
+                                followerAnchor: Alignment.topLeft,
+                                offset: const Offset(0, 8),
+                                child: Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: Container(
+                                      width: MediaQuery.of(context).size.width - 40,
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).cardColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.15),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 5),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: rekomendasiSaran.map((gunungSaran) {
+                                          return ListTile(
+                                            dense: true,
+                                            leading: const Icon(Icons.location_on_outlined, size: 16, color: Colors.blue),
+                                            title: Text(gunungSaran['nama'] ?? "", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                            subtitle: Text(gunungSaran['lokasi'] ?? "", style: const TextStyle(fontSize: 10)),
+                                            trailing: const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.grey),
+                                            onTap: () {
+                                              setState(() {
+                                                _searchController.clear();
+                                                rekomendasiSaran = [];
+                                                queryPencarian = "";
+                                              });
+                                              _tooltipController.hide();
+                                              FocusScope.of(context).unfocus();
+
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => PencarianBasecampPage(gunung: gunungSaran),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
                                   ),
                                 ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white.withOpacity(0.1)),
                               ),
-                            ],
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: filterRekomendasi,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: "Cari destinasi gunungmu...",
+                                  hintStyle: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6)),
+                                  border: InputBorder.none,
+                                  icon: const Icon(Icons.search, color: Colors.white70, size: 22),
+                                  suffixIcon: queryPencarian.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear, color: Colors.white70, size: 18),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            filterRekomendasi("");
+                                          },
+                                        )
+                                      : null,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -258,59 +380,60 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
+            const SizedBox(height: 25),
 
-            const SizedBox(height: 15),
-
-            // 2. BANNER HERO IMAGES
+            // 2. BANNER HERO
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                  Transform(
+                    transform: Matrix4.identity()..setEntry(3, 2, 0.0012)..rotateX(0.06),
+                    alignment: FractionalOffset.center,
                     child: Container(
-                      height: 130,
+                      height: 200,
                       width: double.infinity,
-                      color: Theme.of(context).cardColor,
-                      child: PageView.builder(
-                        controller: _pageController,
-                        itemCount: bannerImages.length,
-                        onPageChanged: (int page) {
-                          setState(() {
-                            _currentPage = page;
-                          });
-                        },
-                        itemBuilder: (context, index) {
-                          return Image.asset(
-                            bannerImages[index],
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Center(
-                                  child: Text(
-                                    "Banner Wisata Pendaki Gunung",
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                          );
-                        },
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.22), blurRadius: 25, offset: const Offset(0, 18)),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: PageView.builder(
+                          controller: _pageController,
+                          itemCount: bannerImages.length,
+                          onPageChanged: (int page) {
+                            setState(() {
+                              _currentPage = page;
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            return Image.asset(
+                              bannerImages[index],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Center(child: Text("Banner Wisata Pendaki Gunung", style: TextStyle(fontWeight: FontWeight.bold))),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 15),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
                       bannerImages.length,
                       (index) => AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        height: 6,
-                        width: _currentPage == index ? 18 : 6,
+                        margin: const EdgeInsets.symmetric(horizontal: 3.5),
+                        height: 5,
+                        width: _currentPage == index ? 22 : 5,
                         decoration: BoxDecoration(
-                          color: _currentPage == index
-                              ? const Color(0xFF2F4B7C)
-                              : Colors.grey[isDark ? 700 : 300],
-                          borderRadius: BorderRadius.circular(3),
+                          color: _currentPage == index ? const Color(0xFF2F4B7C) : Colors.grey[isDark ? 700 : 300],
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
@@ -318,34 +441,9 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
+            const SizedBox(height: 25),
 
-            // 3. KOLOM PENCARIAN
-            Container(
-              margin: const EdgeInsets.all(20),
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: TextField(
-                style: TextStyle(color: Theme.of(context).canvasColor),
-                decoration: const InputDecoration(
-                  hintText: "Cari Gunung yang ingin kamu daki...",
-                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
-                  border: InputBorder.none,
-                  icon: Icon(Icons.search, color: Colors.grey),
-                ),
-              ),
-            ),
-
-            // 4. SEKSI DAFTAR GUNUNG TEXT
+            // 3. DAFTAR GUNUNG TEXT
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -353,74 +451,51 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Text(
                     "Daftar Gunung",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF2F4B7C),
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF2F4B7C)),
                   ),
                   Text(
                     "Nikmati pengalaman mendaki yang tak tergantikan",
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 15),
 
-            // 5. GRID DAFTAR GUNUNG (Menampilkan seluruh isi item secara proporsional)
+            // 4. GRID DAFTAR GUNUNG
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: FutureBuilder<List<dynamic>>(
-                future: getGunung(),
-                builder: (context, snapshot) {
-                  List<dynamic> items =
-                      (snapshot.hasData && snapshot.data!.isNotEmpty)
-                      ? snapshot.data!
-                      : gunungLokal;
-
-                  return GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: items.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3, 
-                      childAspectRatio: 0.7,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 10,
+              child: _isApiLoading
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      itemCount: semuaGunungData.length,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        childAspectRatio: 0.7,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 10,
+                      ),
+                      itemBuilder: (context, index) {
+                        return gunungCardNew(context, semuaGunungData[index]);
+                      },
                     ),
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      return gunungCardNew(context, item);
-                    },
-                  );
-                },
-              ),
             ),
 
-            // 6. TOMBOL LIHAT SEMUA
+            // 5. TOMBOL LIHAT SEMUA
             Align(
               alignment: Alignment.centerRight,
               child: Padding(
                 padding: const EdgeInsets.only(right: 20, bottom: 25, top: 10),
                 child: TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const DaftarGunungPage()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const DaftarGunungPage()));
                   },
-                  child: const Text(
-                    "Lihat semua",
-                    style: TextStyle(
-                      color: Color(0xFF2F4B7C),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
+                  child: const Text("Lihat semua", style: TextStyle(color: Color(0xFF2F4B7C), fontWeight: FontWeight.bold, fontSize: 13)),
                 ),
               ),
             ),
@@ -431,30 +506,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget gunungCardNew(BuildContext context, dynamic data) {
-    String nama = data['name'] ?? data['nama'] ?? data['nama_gunung'] ?? "Gunung";
-    String lokasi = data['lokasi'] ?? "Jawa Barat";
-    String pathGambar = data['image'] ?? "";
+    String nama = data['nama'] ?? "Gunung";
+    String lokasi = data['lokasi'] ?? "Tidak Diketahui";
+    String pathGambar = data['foto_utama'] ?? "";
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PencarianBasecampPage(gunung: data),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => PencarianBasecampPage(gunung: data)));
       },
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.02),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
+            BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.02), blurRadius: 5, offset: const Offset(0, 2)),
           ],
         ),
         child: Column(
@@ -469,7 +535,7 @@ class _HomePageState extends State<HomePage> {
                   child: pathGambar.startsWith('assets/')
                       ? Image.asset(pathGambar, fit: BoxFit.cover)
                       : Image.network(
-                          "${ApiConfig.baseUrl}/storage/$pathGambar",
+                          "${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$pathGambar",
                           fit: BoxFit.cover,
                           errorBuilder: (context, e, s) => Container(
                             color: isDark ? Colors.grey[800] : Colors.grey[300],
@@ -487,26 +553,9 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      nama,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                        color: isDark ? Colors.white : const Color(0xFF2F4B7C),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(nama, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: isDark ? Colors.white : const Color(0xFF2F4B7C)), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
-                    Text(
-                      lokasi,
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: isDark ? Colors.grey[400] : const Color(0xFF666666),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(lokasi, style: TextStyle(fontSize: 9, color: isDark ? Colors.grey[400] : const Color(0xFF666666)), maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
