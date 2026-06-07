@@ -35,7 +35,7 @@ class _HistoryPageState extends State<HistoryPage> {
       setState(() {
         isLoggedIn = true;
       });
-      fetchHistory(); 
+      fetchHistory();
     } else {
       setState(() {
         isLoggedIn = false;
@@ -62,54 +62,65 @@ class _HistoryPageState extends State<HistoryPage> {
           .timeout(const Duration(seconds: 5));
 
       // 2. Ambil data untuk Tab Pendaftaran
-      final resPendaftaran = await http
-          .get(
-            Uri.parse("${ApiConfig.baseUrl}/user/bookings/history"),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Accept': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 5));
+      final resPendaftaran = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/user/admin-requests"),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
 
+      print("STATUS ADMIN REQUEST = ${resPendaftaran.statusCode}");
+      print("BODY ADMIN REQUEST = ${resPendaftaran.body}");
+      
       if (resPemesanan.statusCode == 200) {
-        final Map<String, dynamic> bodyPemesanan = json.decode(resPemesanan.body);
+        final Map<String, dynamic> bodyPemesanan = json.decode(
+          resPemesanan.body,
+        );
         final List rawPemesanan = bodyPemesanan['data']['data'] ?? [];
 
         List rawPendaftaran = [];
         if (resPendaftaran.statusCode == 200) {
-          final Map<String, dynamic> bodyPendaftaran = json.decode(resPendaftaran.body);
-          rawPendaftaran = bodyPendaftaran['data']['data'] ?? [];
+          print("ADMIN REQUEST BODY:");
+          print(resPendaftaran.body);
+
+          final Map<String, dynamic> bodyPendaftaran = json.decode(
+            resPendaftaran.body,
+          );
+
+          rawPendaftaran = bodyPendaftaran['data']?? [];
         }
 
         setState(() {
           pemesananData = rawPemesanan.map((item) {
-            var rawPrice = item['total_price'] ?? item['harga'] ?? item['harga_total'] ?? 0;
-            int parsedPrice = double.tryParse(rawPrice.toString())?.toInt() ?? 0;
+            var rawPrice =
+                item['total_price'] ??
+                item['harga'] ??
+                item['harga_total'] ??
+                0;
+            int parsedPrice =
+                double.tryParse(rawPrice.toString())?.toInt() ?? 0;
 
             return {
               'id': item['id'],
               'date': item['tanggal_naik'],
               'status': item['status'],
               'total_price': parsedPrice,
-              'basecamp': item['basecamp'] != null ? item['basecamp']['nama'] : 'Basecamp',
+              'basecamp': item['basecamp'] != null
+                  ? item['basecamp']['nama']
+                  : 'Basecamp',
               'jumlah_pendaki': item['jumlah_pendaki'] ?? 1,
               'durasi': item['durasi_pendakian'] ?? 2,
             };
           }).toList();
 
           pendaftaranData = rawPendaftaran.map((item) {
-            var rawPrice = item['total_price'] ?? item['harga'] ?? item['harga_total'] ?? 0;
-            int parsedPrice = double.tryParse(rawPrice.toString())?.toInt() ?? 0;
-
             return {
               'id': item['id'],
-              'date': item['tanggal_naik'],
+              'date': item['created_at'],
               'status': item['status'],
-              'total_price': parsedPrice,
-              'basecamp': item['basecamp'] != null ? item['basecamp']['nama'] : 'Basecamp',
-              'jumlah_pendaki': item['jumlah_pendaki'] ?? 1,
-              'durasi': item['durasi_pendakian'] ?? 2,
+              'type': item['request_type'],
+              'basecamp': item['basecamp_id'] ?? '-',
             };
           }).toList();
 
@@ -117,6 +128,7 @@ class _HistoryPageState extends State<HistoryPage> {
           _urutkanData();
           isLoading = false;
         });
+        print("TOTAL REQUEST: ${pendaftaranData.length}");
       } else {
         setState(() => isLoading = false);
       }
@@ -129,8 +141,10 @@ class _HistoryPageState extends State<HistoryPage> {
   // Fungsi Logika Mengurutkan Tanggal Pendakian
   void _urutkanData() {
     int Function(dynamic, dynamic) sortLogic = (a, b) {
-      DateTime dateA = DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime(1970);
-      DateTime dateB = DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime(1970);
+      DateTime dateA =
+          DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime(1970);
+      DateTime dateB =
+          DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime(1970);
       return _isNewestFirst ? dateB.compareTo(dateA) : dateA.compareTo(dateB);
     };
 
@@ -168,7 +182,11 @@ class _HistoryPageState extends State<HistoryPage> {
                 const SizedBox(height: 20),
                 const Text(
                   "E-TIKET PENDAKIAN",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.0),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 1.0,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(
@@ -176,67 +194,136 @@ class _HistoryPageState extends State<HistoryPage> {
                   style: TextStyle(color: Colors.grey[500], fontSize: 11),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Pembatas Garis Putus-putus Atas
-                Text("--------------------------------------------------", style: TextStyle(color: Colors.grey[300])),
-                
+                Text(
+                  "--------------------------------------------------",
+                  style: TextStyle(color: Colors.grey[300]),
+                ),
+
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Nama Basecamp", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    Text("${booking['basecamp']}", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2F4B7C))),
+                    const Text(
+                      "Nama Basecamp",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      "${booking['basecamp']}",
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2F4B7C),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Order ID", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    Text("#${booking['id']}", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    const Text(
+                      "Order ID",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      "#${booking['id']}",
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Tanggal Naik", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    Text("${booking['date']}", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    const Text(
+                      "Tanggal Naik",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      "${booking['date']}",
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Status Pembayaran", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                    const Text(
+                      "Status Pembayaran",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: statusColor.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         "${booking['status']}".toUpperCase(),
-                        style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 15),
                 // Pembatas Garis Putus-putus Bawah
-                Text("--------------------------------------------------", style: TextStyle(color: Colors.grey[300])),
+                Text(
+                  "--------------------------------------------------",
+                  style: TextStyle(color: Colors.grey[300]),
+                ),
                 const SizedBox(height: 15),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Total Pembayaran", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                    Text("Rp ${booking['total_price']}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.teal)),
+                    const Text(
+                      "Total Pembayaran",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Rp ${booking['total_price']}",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 30),
-                
+
                 // Tombol Tutup Struk
                 SizedBox(
                   width: double.infinity,
@@ -244,10 +331,18 @@ class _HistoryPageState extends State<HistoryPage> {
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2F4B7C),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: const Text("Selesai & Tutup", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "Selesai & Tutup",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -259,10 +354,13 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> cancelBooking(int bookingId) async {
-    bool konfirmasi = await showDialog(
+    bool konfirmasi =
+        await showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Text(
               "Batalkan Booking",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -279,12 +377,16 @@ class _HistoryPageState extends State<HistoryPage> {
                 onPressed: () => Navigator.pop(context, true),
                 child: const Text(
                   "Ya, Batalkan",
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
-        ) ?? false;
+        ) ??
+        false;
 
     if (!konfirmasi) return;
 
@@ -306,13 +408,15 @@ class _HistoryPageState extends State<HistoryPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Booking sukses dibatalkan!")),
         );
-        fetchHistory(); 
+        fetchHistory();
       } else {
         final errorResponse = jsonDecode(response.body);
         setState(() => isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorResponse['message'] ?? "Gagal membatalkan booking"),
+            content: Text(
+              errorResponse['message'] ?? "Gagal membatalkan booking",
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -362,15 +466,23 @@ class _HistoryPageState extends State<HistoryPage> {
                 ElevatedButton(
                   onPressed: () => Navigator.pushNamed(context, '/login'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFF2F4B7C),
+                    backgroundColor: isDark
+                        ? const Color(0xFF1E1E1E)
+                        : const Color(0xFF2F4B7C),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Text(
                     "Login Sekarang",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -439,7 +551,10 @@ class _HistoryPageState extends State<HistoryPage> {
                               Image.asset(
                                 'assets/images/logosummitgo.png',
                                 height: 35,
-                                errorBuilder: (context, e, s) => const Icon(Icons.landscape, color: Colors.white),
+                                errorBuilder: (context, e, s) => const Icon(
+                                  Icons.landscape,
+                                  color: Colors.white,
+                                ),
                               ),
                               const Text(
                                 "Riwayat Tiket",
@@ -450,7 +565,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                              const SizedBox(width: 40), 
+                              const SizedBox(width: 40),
                             ],
                           ),
                         ),
@@ -462,9 +577,15 @@ class _HistoryPageState extends State<HistoryPage> {
                             indicatorWeight: 3,
                             indicatorSize: TabBarIndicatorSize.label,
                             labelColor: Colors.white,
-                            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            labelStyle: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                             unselectedLabelColor: Colors.white70,
-                            unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
+                            unselectedLabelStyle: TextStyle(
+                              fontWeight: FontWeight.normal,
+                              fontSize: 14,
+                            ),
                             tabs: [
                               Tab(text: "Pemesanan"),
                               Tab(text: "Pendaftaran"),
@@ -480,19 +601,25 @@ class _HistoryPageState extends State<HistoryPage> {
 
             // 2. FILTER DROPDOWN AKSI (Hanya Urutkan Tanggal yang Tersisa)
             Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 10),
+              padding: const EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: 10,
+              ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () {
                       setState(() {
-                        _isNewestFirst = !_isNewestFirst; // Toggle urutan tanggal
+                        _isNewestFirst =
+                            !_isNewestFirst; // Toggle urutan tanggal
                         _urutkanData(); // Jalankan penyusunan ulang
                       });
                     },
                     child: filterDropdown(
-                      _isNewestFirst ? "Urutan: Terbaru" : "Urutan: Terlama", 
-                      isDark
+                      _isNewestFirst ? "Urutan: Terbaru" : "Urutan: Terlama",
+                      isDark,
                     ),
                   ),
                 ],
@@ -515,17 +642,27 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Widget buildListView(List data, bool isDark, {required bool isPemesananTab}) {
-    if (isLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF2F4B7C)));
+    if (isLoading)
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF2F4B7C)),
+      );
     if (data.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.confirmation_number_outlined, size: 60, color: Colors.grey[400]),
+            Icon(
+              Icons.confirmation_number_outlined,
+              size: 60,
+              color: Colors.grey[400],
+            ),
             const SizedBox(height: 10),
             Text(
               "Belum ada riwayat transaksi.",
-              style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 13),
+              style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                fontSize: 13,
+              ),
             ),
           ],
         ),
@@ -557,7 +694,9 @@ class _HistoryPageState extends State<HistoryPage> {
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 10),
               title: Text(
-                "${currentBooking['basecamp']}",
+                isPemesananTab
+                    ? "${currentBooking['basecamp']}"
+                    : "Pengajuan Admin Gunung",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -575,39 +714,66 @@ class _HistoryPageState extends State<HistoryPage> {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[500]),
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: 12,
+                        color: Colors.grey[500],
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         "${currentBooking['date']}",
-                        style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[700]),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey[400] : Colors.grey[700],
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    "Rp ${currentBooking['total_price']}",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.teal,
+                  if (isPemesananTab)
+                    Text(
+                      "Rp ${currentBooking['total_price']}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.teal,
+                      ),
+                    )
+                  else
+                    Text(
+                      "Role: ${currentBooking['type']}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.blue,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 8),
-                  
+
                   // TOMBOL BARU: LIHAT DETAIL E-TIKET
-                  TextButton.icon(
-                    onPressed: () => _tampilkanDetailTiket(currentBooking, isDark),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(50, 30),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  if (isPemesananTab)
+                    TextButton.icon(
+                      onPressed: () =>
+                          _tampilkanDetailTiket(currentBooking, isDark),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(50, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(
+                        Icons.receipt_long_rounded,
+                        size: 14,
+                        color: Color(0xFF2F4B7C),
+                      ),
+                      label: const Text(
+                        "Lihat Detail",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2F4B7C),
+                        ),
+                      ),
                     ),
-                    icon: const Icon(Icons.receipt_long_rounded, size: 14, color: Color(0xFF2F4B7C)),
-                    label: const Text(
-                      "Lihat Detail",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2F4B7C)),
-                    ),
-                  )
                 ],
               ),
               trailing: Column(
@@ -615,7 +781,10 @@ class _HistoryPageState extends State<HistoryPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: _getStatusColor(currentStatus).withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8),
@@ -630,7 +799,8 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ),
                   ),
-                  if (isPemesananTab && currentStatus.toLowerCase() == 'pending') ...[
+                  if (isPemesananTab &&
+                      currentStatus.toLowerCase() == 'pending') ...[
                     const SizedBox(height: 12),
                     GestureDetector(
                       onTap: () => cancelBooking(currentBooking['id']),
@@ -673,7 +843,8 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
           const SizedBox(width: 4),
           Icon(
-            Icons.swap_vert_rounded, // Mengganti icon agar merepresentasikan sorting atas-bawah
+            Icons
+                .swap_vert_rounded, // Mengganti icon agar merepresentasikan sorting atas-bawah
             size: 16,
             color: isDark ? Colors.grey[500] : Colors.grey[600],
           ),
