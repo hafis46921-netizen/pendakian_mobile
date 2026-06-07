@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class SyaratKetentuanAdminPage extends StatefulWidget {
-  final Map<String, String> registrationData;
+  final Map<String, dynamic> registrationData;
 
   const SyaratKetentuanAdminPage({super.key, required this.registrationData});
 

@@ -11,26 +11,28 @@ class PencarianBasecampPage extends StatelessWidget {
 
   // Mengambil data Basecamp secara dinamis berdasarkan ID Gunung dari API Laravel
   Future<List<dynamic>> fetchBasecampsByGunung(int gunungId) async {
-    try {
-      final response = await http
-          .get(Uri.parse("${ApiConfig.baseUrl}/basecamps?gunung_id=$gunungId"))
-          .timeout(const Duration(seconds: 5));
+  try {
+    final response = await http
+        .get(
+          Uri.parse(
+            "${ApiConfig.baseUrl}/user/basecamps?gunung_id=$gunungId",
+          ),
+        )
+        .timeout(const Duration(seconds: 5));
 
-      if (response.statusCode == 200) {
-        final decodedData = jsonDecode(response.body);
-        
-        if (decodedData is Map && decodedData.containsKey('data')) {
-          return decodedData['data'];
-        }
-        if (decodedData is List) {
-          return decodedData;
-        }
-      }
-    } catch (e) {
-      debugPrint("Koneksi API Basecamp Gagal: $e");
+    if (response.statusCode == 200) {
+      debugPrint("BASECAMP RESPONSE: ${response.body}");
+
+      final decodedData = jsonDecode(response.body);
+
+      return decodedData['data']['data'] ?? [];
     }
-    return [];
+  } catch (e) {
+    debugPrint("Koneksi API Basecamp Gagal: $e");
   }
+
+  return [];
+}
 
   @override
   Widget build(BuildContext context) {
@@ -54,16 +56,22 @@ class PencarianBasecampPage extends StatelessWidget {
                       : Image.network(
                           "${ApiConfig.baseUrl}/storage/$fotoGunung",
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: isDark ? Colors.grey[850] : Colors.grey[300],
-                            child: Icon(Icons.image, size: 50, color: isDark ? Colors.grey[600] : Colors.grey),
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: isDark
+                                    ? Colors.grey[850]
+                                    : Colors.grey[300],
+                                child: Icon(
+                                  Icons.image,
+                                  size: 50,
+                                  color: isDark
+                                      ? Colors.grey[600]
+                                      : Colors.grey,
+                                ),
+                              ),
                         ),
                 ),
-                Container(
-                  height: 220,
-                  color: Colors.black.withOpacity(0.15),
-                ),
+                Container(height: 220, color: Colors.black.withOpacity(0.15)),
                 Positioned(
                   top: 40,
                   left: 15,
@@ -95,7 +103,7 @@ class PencarianBasecampPage extends StatelessWidget {
                           color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
-                        )
+                        ),
                       ],
                     ),
                     child: Column(
@@ -106,7 +114,9 @@ class PencarianBasecampPage extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C),
+                            color: isDark
+                                ? const Color(0xFF6A93D4)
+                                : const Color(0xFF2F4B7C),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -120,7 +130,8 @@ class PencarianBasecampPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          gunung['deskripsi'] ?? "Belum ada deskripsi untuk gunung ini.",
+                          gunung['deskripsi'] ??
+                              "Belum ada deskripsi untuk gunung ini.",
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -151,11 +162,16 @@ class PencarianBasecampPage extends StatelessWidget {
                       }
 
                       List<dynamic> jalurBasecamp = snapshot.data ?? [];
+                      debugPrint("DATA BASECAMP: $jalurBasecamp");
 
                       if (jalurBasecamp.isEmpty) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(child: Text("Belum ada jalur basecamp resmi tersedia.")),
+                          child: Center(
+                            child: Text(
+                              "Belum ada jalur basecamp resmi tersedia.",
+                            ),
+                          ),
                         );
                       }
 
@@ -167,16 +183,24 @@ class PencarianBasecampPage extends StatelessWidget {
                           final basecamp = jalurBasecamp[index];
 
                           // Konversi harga tiket ke representasi teks IDR
-                          int harga = basecamp['harga_tiket'] ?? 0;
-                          String formattedHarga = harga > 0 ? "Rp ${harga.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}" : "Rp 25.000";
+                          final harga =
+    double.tryParse(basecamp['harga_tiket'].toString())?.toInt() ?? 0;
 
+String formattedHarga = harga > 0
+    ? "Rp ${harga.toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]}.',
+      )}"
+    : "Rp 25.000";
                           return _buildBasecampCard(
                             context: context,
                             isDark: isDark,
                             basecampId: basecamp['id'] ?? 0,
-                            namaBasecamp: "Basecamp ${basecamp['nama'] ?? 'Unknown'}",
+                            namaBasecamp:
+                                "Basecamp ${basecamp['nama'] ?? 'Unknown'}",
                             weekday: formattedHarga,
-                            weekend: formattedHarga, // Mengikuti data tunggal 'harga_tiket' dari skema kamu
+                            weekend:
+                                formattedHarga, // Mengikuti data tunggal 'harga_tiket' dari skema kamu
                             imagePath: basecamp['foto_utama'] ?? fotoGunung,
                           );
                         },
@@ -228,14 +252,16 @@ class PencarianBasecampPage extends StatelessWidget {
               color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
-            )
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               child: SizedBox(
                 height: 130,
                 width: double.infinity,
@@ -246,7 +272,11 @@ class PencarianBasecampPage extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: isDark ? Colors.grey[850] : Colors.grey[300],
-                          child: const Icon(Icons.image, size: 40, color: Colors.grey),
+                          child: const Icon(
+                            Icons.image,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
               ),
@@ -261,7 +291,9 @@ class PencarianBasecampPage extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? const Color(0xFF6A93D4) : const Color(0xFF2F4B7C),
+                      color: isDark
+                          ? const Color(0xFF6A93D4)
+                          : const Color(0xFF2F4B7C),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -271,28 +303,36 @@ class PencarianBasecampPage extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Tarif Weekday", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          const Text(
+                            "Tarif Weekday",
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             weekday,
                             style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: isDark ? Colors.white : Colors.black87),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
                           ),
                         ],
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Tarif Weekend", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          const Text(
+                            "Tarif Weekend",
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             weekend,
                             style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: isDark ? Colors.white : Colors.black87),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
                           ),
                         ],
                       ),

@@ -1,5 +1,7 @@
 class ApiConfig {
-  // Ganti IP lama dengan domain server production kamu
-  static const String baseUrl = "https://pendakian.cicd.my.id/api";
-  static const String storageUrl = "https://pendakian.cicd.my.id/storage";
-}
+  static const String baseUrl =
+      "http://192.168.0.105:8000/api";
+
+  static String get storageUrl =>
+      baseUrl.replaceAll('/api', '');
+} 

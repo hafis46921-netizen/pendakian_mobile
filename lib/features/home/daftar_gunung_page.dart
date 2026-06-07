@@ -52,7 +52,7 @@ class _DaftarGunungPageState extends State<DaftarGunungPage> {
   Future<void> fetchDaftarGunung() async {
     try {
       final response = await http
-          .get(Uri.parse("${ApiConfig.baseUrl}/gunungs"))
+          .get(Uri.parse("${ApiConfig.baseUrl}/user/gunungs"))
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
@@ -190,7 +190,6 @@ class _DaftarGunungPageState extends State<DaftarGunungPage> {
                     ),
                   ),
                   const Divider(height: 1),
-                  // List saran text yang bisa diklik langsung masuk halaman detail/basecamp
                   ...rekomendasiSaran.map((gunungSaran) {
                     return ListTile(
                       dense: true,
@@ -201,14 +200,12 @@ class _DaftarGunungPageState extends State<DaftarGunungPage> {
                       ),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
                       onTap: () {
-                        // Hilangkan rekomendasi & set text pencarian sesuai yang dipilih
                         setState(() {
                           _searchController.text = gunungSaran['nama'];
                           filterGunung(gunungSaran['nama']);
                           rekomendasiSaran = []; 
                         });
                         
-                        // Opsional: Langsung arahkan ke halaman pilih basecamp gunung tersebut
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -230,86 +227,82 @@ class _DaftarGunungPageState extends State<DaftarGunungPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : gunungTerfilter.isNotEmpty
                     ? ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                         itemCount: gunungTerfilter.length,
                         itemBuilder: (context, index) {
                           final gunung = gunungTerfilter[index];
-                          String pathGambar = gunung['foto_utama'] ?? "";
+                          String nama = gunung['nama'] ?? "Gunung";
+                          String lokasi = gunung['lokasi'] ?? "Tidak Diketahui";
+                          dynamic fotoRaw = gunung['foto_utama'];
 
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      PencarianBasecampPage(gunung: gunung),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 15),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(15),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PencarianBasecampPage(gunung: gunung),
                                   ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                );
+                              },
+                              child: Row(
                                 children: [
-                                  // Gambar Banner Gunung
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(15),
-                                    ),
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      height: 160,
-                                      child: pathGambar.startsWith('assets/')
-                                          ? Image.asset(pathGambar, fit: BoxFit.cover)
-                                          : Image.network(
-                                              "${ApiConfig.baseUrl}/storage/$pathGambar",
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) =>
-                                                  Container(
-                                                color: isDark ? Colors.grey[850] : Colors.grey[300],
-                                                child: const Icon(Icons.image, color: Colors.grey, size: 40),
+                                  // Wadah Gambar
+                                  SizedBox(
+                                    width: 110,
+                                    height: 90,
+                                    child: (fotoRaw == null || fotoRaw.toString().isEmpty)
+                                        ? Image.asset("assets/images/puncak_ciremai.jpg", fit: BoxFit.cover)
+                                        : fotoRaw.toString().startsWith('assets/')
+                                            ? Image.asset(fotoRaw.toString(), fit: BoxFit.cover)
+                                            : Image.network(
+                                                "${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$fotoRaw",
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, e, s) => Container(
+                                                  color: Colors.grey[300],
+                                                  child: const Icon(Icons.image, color: Colors.grey),
+                                                ),
                                               ),
-                                            ),
+                                  ),
+                                  // Detail Informasi
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            nama,
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.location_on, size: 12, color: Colors.redAccent),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  lokasi,
+                                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-
-                                  // Informasi Detail Gunung
-                                  Padding(
-                                    padding: const EdgeInsets.all(15.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          gunung['nama'] ?? "Gunung",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 16,
-                                            color: isDark ? Colors.white : const Color(0xFF1E3A8A),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          gunung['deskripsi'] ?? "Destinasi jalur pendakian Indonesia resmi.",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
+                                  const Padding(
+                                    padding: EdgeInsets.only(right: 12.0),
+                                    child: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
                                   ),
                                 ],
                               ),
@@ -318,10 +311,7 @@ class _DaftarGunungPageState extends State<DaftarGunungPage> {
                         },
                       )
                     : const Center(
-                        child: Text(
-                          "Gunung tidak ditemukan.",
-                          style: TextStyle(color: Colors.grey),
-                        ),
+                        child: Text("Gunung tidak ditemukan"),
                       ),
           ),
         ],

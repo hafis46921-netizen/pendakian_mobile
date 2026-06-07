@@ -7,7 +7,8 @@ import '../profil/tentang_aplikasi_page.dart';
 import '../profil/kebijakan_privasi_page.dart';
 import '../profil/syarat_ketentuan_page.dart';
 import '../profil/tema_page.dart';
-import '../../api_config.dart'; 
+import '../../api_config.dart';
+import 'syarat_ketentuan_admin_page.dart'; 
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -19,7 +20,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String name = "";
   String email = "";
-  String? fotoUrl; 
+  String? fotoUrl;
   bool isLoggedIn = false;
 
   @override
@@ -37,7 +38,7 @@ class _ProfilePageState extends State<ProfilePage> {
         isLoggedIn = true;
         name = prefs.getString('name') ?? "Pendaki";
         email = prefs.getString('email') ?? "pendaki@email.com";
-        fotoUrl = prefs.getString('foto'); 
+        fotoUrl = prefs.getString('foto');
       });
     } else {
       setState(() {
@@ -84,20 +85,27 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () async {
-                    // Selesai login, tunggu hasil kembalian untuk refresh page profile
                     await Navigator.pushNamed(context, '/login');
-                    getUser(); 
+                    getUser();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFF2F4B7C),
+                    backgroundColor: isDark
+                        ? const Color(0xFF1E1E1E)
+                        : const Color(0xFF2F4B7C),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Text(
                     "Login Sekarang",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -129,7 +137,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
               ),
-              // Ornamen Lingkaran Abstrak 1
               Positioned(
                 top: -40,
                 right: -20,
@@ -142,7 +149,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
               ),
-              // Ornamen Lingkaran Abstrak 2
               Positioned(
                 top: 30,
                 left: -30,
@@ -155,16 +161,19 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
               ),
-              // Konten Header Utama
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
                       Image.asset(
                         'assets/images/logosummitgo.png',
                         height: 35,
-                        errorBuilder: (context, e, s) => const Icon(Icons.landscape, color: Colors.white),
+                        errorBuilder: (context, e, s) =>
+                            const Icon(Icons.landscape, color: Colors.white),
                       ),
                       const SizedBox(width: 12),
                       const Text(
@@ -200,18 +209,25 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   child: Row(
                     children: [
-                      // KOREKSI DI SINI: Menghapus tanda seru (!) pada Colors.grey[200]
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
-                        backgroundImage: (fotoUrl != null && fotoUrl!.isNotEmpty)
-                            ? NetworkImage("${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$fotoUrl") as ImageProvider
+                        backgroundColor: isDark
+                            ? Colors.grey[800]
+                            : Colors.grey[200],
+                        backgroundImage:
+                            (fotoUrl != null && fotoUrl!.isNotEmpty)
+                            ? NetworkImage(
+                                    "${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$fotoUrl",
+                                  )
+                                  as ImageProvider
                             : null,
                         child: (fotoUrl == null || fotoUrl!.isEmpty)
                             ? Icon(
                                 Icons.person_rounded,
                                 size: 32,
-                                color: isDark ? Colors.grey[400] : const Color(0xFF2F4B7C),
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : const Color(0xFF2F4B7C),
                               )
                             : null,
                       ),
@@ -225,14 +241,18 @@ class _ProfilePageState extends State<ProfilePage> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: isDark ? Colors.white : const Color(0xFF2F4B7C),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF2F4B7C),
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               email,
                               style: TextStyle(
-                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                                 fontSize: 13,
                               ),
                             ),
@@ -258,7 +278,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   Text(
                     "Pengaturan Akun",
                     style: TextStyle(
-                      color: isDark ? Colors.grey[300] : const Color(0xFF2F4B7C),
+                      color: isDark
+                          ? Colors.grey[300]
+                          : const Color(0xFF2F4B7C),
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                       letterSpacing: 0.5,
@@ -294,7 +316,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       );
                     },
                   ),
-                  
+
                   printSeputarAplikasiSection(isDark),
                 ],
               ),
@@ -347,27 +369,12 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
 
         menuItem(
-          "Syarat dan Ketentuan",
-          Icons.gavel_rounded,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SyaratKetentuanPage(),
-              ),
-            );
-          },
-        ),
-
-        menuItem(
           "Tema",
           Icons.palette_outlined,
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const TemaPage(),
-              ),
+              MaterialPageRoute(builder: (context) => const TemaPage()),
             );
           },
         ),
@@ -396,7 +403,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 (route) => false,
               );
             },
-            icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
             label: const Text(
               "Keluar Akun",
               style: TextStyle(
