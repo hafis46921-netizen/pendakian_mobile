@@ -1,7 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:file_picker/file_picker.dart'; // Import File Picker
+import 'package:file_picker/file_picker.dart';
 import '../../api_config.dart';
 
 class SyaratKetentuanAdminPage extends StatefulWidget {
@@ -16,16 +17,13 @@ class SyaratKetentuanAdminPage extends StatefulWidget {
 class _SyaratKetentuanAdminPageState extends State<SyaratKetentuanAdminPage> {
   bool _isAgreed = false; 
   bool _isLoading = false; 
-  
-  // Variabel penampung file dokumen yang dipilih
   PlatformFile? _selectedFile;
 
-  // ==================== FUNGSI MEMILIH FILE ====================
   Future<void> _pilihDokumen() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'png'], // Sesuai mimes di Laravel kamu
+        allowedExtensions: ['pdf', 'jpg', 'png'],
       );
 
       if (result != null) {
@@ -38,20 +36,15 @@ class _SyaratKetentuanAdminPageState extends State<SyaratKetentuanAdminPage> {
     }
   }
 
-  // ==================== FUNGSI HIT API GABUNGAN ====================
   Future<void> _prosesPendaftaranAdmin(bool isDark) async {
-    // Validasi apakah user sudah memilih dokumen pendukung
     if (_selectedFile == null) {
       _showSnackBar("Silahkan unggah dokumen persyaratan terlebih dahulu!");
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // LANGKAH 1: Register Akun Terlebih Dahulu
       final regUrl = Uri.parse("${ApiConfig.baseUrl}/register"); 
       final regResponse = await http.post(
         regUrl,
@@ -78,35 +71,29 @@ class _SyaratKetentuanAdminPageState extends State<SyaratKetentuanAdminPage> {
         return;
       }
 
-      // LANGKAH 2: Kirim Request Admin + Upload File ke Laravel
       final reqAdminUrl = Uri.parse("${ApiConfig.baseUrl}/request-admin"); 
       var request = http.MultipartRequest('POST', reqAdminUrl);
       
-      // Inject Header Bearer Token
       request.headers.addAll({
         "Authorization": "Bearer $token",
         "Accept": "application/json"
       });
 
-      // Field Teks
       request.fields['request_type'] = 'admin_gunung';
 
-      // Lampirkan Berkas Fisik Menggunakan bytes (Sangat aman untuk Flutter Android/iOS/Web)
       if (_selectedFile!.bytes != null) {
         request.files.add(http.MultipartFile.fromBytes(
-          'documents[0]', // Menggunakan indeks [0] karena Laravel membaca array 'documents.*'
+          'documents[0]',
           _selectedFile!.bytes!,
           filename: _selectedFile!.name,
         ));
       } else if (_selectedFile!.path != null) {
-        // Fallback jika membaca path lokal langsung (untuk Android/iOS)
         request.files.add(await http.MultipartFile.fromPath(
           'documents[0]',
           _selectedFile!.path!,
         ));
       }
 
-      // Eksekusi pengiriman berkas multipart
       var responseStream = await request.send();
       var response = await http.Response.fromStream(responseStream);
 
@@ -120,9 +107,7 @@ class _SyaratKetentuanAdminPageState extends State<SyaratKetentuanAdminPage> {
     } catch (e) {
       _showSnackBar("Terjadi kesalahan sistem: $e");
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -133,53 +118,24 @@ class _SyaratKetentuanAdminPageState extends State<SyaratKetentuanAdminPage> {
   }
 
   void _showSuccessDialog(bool isDark) {
-    showDialog(
+    showCupertinoDialog(
       context: context,
-      barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Theme.of(context).cardColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          content: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Registrasi & Berkas Anda Berhasil Dikirim!",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: isDark ? Colors.white : const Color(0xFF2F4B7C),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  "Mohon tunggu tim administrator memvalidasi dokumen legalitas Anda.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                ),
-                const SizedBox(height: 25),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context); 
-                      Navigator.pop(context); 
-                      Navigator.pop(context); 
-                    },
-                    child: const Text("Selesai", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return CupertinoAlertDialog(
+          title: const Text("Berhasil"),
+          content: const Text("Registrasi & Berkas Anda Berhasil Dikirim!\n\nMohon tunggu tim administrator memvalidasi dokumen legalitas Anda."),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: const Text("Selesai"),
+              onPressed: () {
+                Navigator.pop(context); 
+                Navigator.pop(context); 
+                Navigator.pop(context); 
+                Navigator.pop(context); 
+              },
+            )
+          ],
         );
       },
     );
@@ -188,157 +144,184 @@ class _SyaratKetentuanAdminPageState extends State<SyaratKetentuanAdminPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final backgroundColor = isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7);
+    final cardColor = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final dividerColor = isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: cardColor,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+        centerTitle: true,
+        title: Text(
+          "Syarat & Ketentuan",
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(CupertinoIcons.chevron_back, size: 24, color: Color(0xFF2F4B7C)),
           onPressed: () => Navigator.pop(context),
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(color: dividerColor, height: 0.5),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Text(
-              "Undang Undang Perusahaan & Syarat Admin",
-              style: TextStyle(
-                fontWeight: FontWeight.bold, 
-                fontSize: 16, 
-                color: isDark ? Colors.grey[300] : const Color(0xFF2F4B7C),
-              ),
-            ),
-            const SizedBox(height: 15),
-
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[900] : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: SingleChildScrollView(
-                  child: Text(
-                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " * 20,
-                    style: TextStyle(
-                      fontSize: 12, 
-                      color: isDark ? Colors.grey[400] : Colors.grey[700], 
-                      height: 1.5,
+      body: _isLoading
+          ? const Center(child: CupertinoActivityIndicator(radius: 14))
+          : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  _buildSectionHeader("DOKUMEN HUKUM & ATURAN"),
+                  
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    child: CupertinoScrollbar(
+                      child: SingleChildScrollView(
+                        child: Text(
+                          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " * 20,
+                          style: TextStyle(
+                            fontSize: 14, 
+                            color: isDark ? Colors.grey[300] : Colors.black87, 
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-
-            // ==================== AREA UPLOAD DOKUMEN ====================
-            InkWell(
-              onTap: _pilihDokumen,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[850] : Colors.blue[50]!.withOpacity(0.5),
-                  border: Border.all(color: Colors.blue.withOpacity(0.4), style: BorderStyle.solid),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.cloud_upload_outlined, color: isDark ? Colors.blue[300] : const Color(0xFF2F4B7C)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  
+                  const SizedBox(height: 20),
+                  _buildSectionHeader("UPLOAD DOKUMEN PENDUKUNG"),
+                  
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                      onPressed: _pilihDokumen,
+                      child: Row(
                         children: [
-                          Text(
-                            _selectedFile != null ? _selectedFile!.name : "Unggah Dokumen Legalitas (PDF/JPG/PNG)",
-                            style: TextStyle(
-                              fontSize: 12, 
-                              fontWeight: FontWeight.bold,
-                              color: _selectedFile != null ? Colors.green : (isDark ? Colors.grey[300] : Colors.black87)
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Icon(
+                            _selectedFile != null ? CupertinoIcons.doc_fill : CupertinoIcons.cloud_upload,
+                            color: _selectedFile != null ? CupertinoColors.activeGreen : const Color(0xFF007AFF),
                           ),
-                          if (_selectedFile == null)
-                            Text("Maksimal ukuran file berkas 4MB", style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _selectedFile != null ? _selectedFile!.name : "Unggah Dokumen Legalitas (PDF/JPG/PNG)",
+                                  style: TextStyle(
+                                    fontSize: 15, 
+                                    fontWeight: FontWeight.w500,
+                                    color: _selectedFile != null 
+                                        ? CupertinoColors.activeGreen 
+                                        : (isDark ? Colors.white : Colors.black87)
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Maksimal ukuran file berkas 4MB", 
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_selectedFile != null)
+                            const Icon(CupertinoIcons.checkmark_circle_fill, color: CupertinoColors.activeGreen, size: 22)
+                          else
+                            const Icon(CupertinoIcons.chevron_forward, color: CupertinoColors.inactiveGray, size: 18),
                         ],
                       ),
                     ),
-                    if (_selectedFile != null)
-                      const Icon(Icons.check_circle, color: Colors.green, size: 20)
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
+                  ),
 
-            // Checkbox Persetujuan
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(isDark ? 0.15 : 0.1),
-                border: Border.all(color: Colors.green.withOpacity(isDark ? 0.6 : 0.5)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      checkboxTheme: CheckboxThemeData(
-                        side: BorderSide(color: isDark ? Colors.green[400]! : Colors.green),
+                  const SizedBox(height: 20),
+                  
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        CupertinoSwitch(
+                          value: _isAgreed,
+                          activeColor: CupertinoColors.activeGreen,
+                          onChanged: (value) {
+                            setState(() {
+                              _isAgreed = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Saya menyetujui seluruh syarat dan ketentuan undang-undang yang berlaku di perusahaan ini.",
+                            style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.black87),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 40),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton(
+                        color: const Color(0xFF2F4B7C),
+                        disabledColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFD1D1D6),
+                        borderRadius: BorderRadius.circular(12),
+                        onPressed: (_isAgreed && _selectedFile != null) ? () => _prosesPendaftaranAdmin(isDark) : null,
+                        child: Text(
+                          "Daftar & Kirim Berkas",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600, 
+                            fontSize: 16, 
+                            color: (_isAgreed && _selectedFile != null) ? Colors.white : Colors.grey[500]
+                          ),
+                        ),
                       ),
                     ),
-                    child: Checkbox(
-                      value: _isAgreed,
-                      activeColor: Colors.green,
-                      checkColor: Colors.white,
-                      onChanged: (value) {
-                        setState(() {
-                          _isAgreed = value ?? false;
-                        });
-                      },
-                    ),
                   ),
-                  Expanded(
-                    child: Text(
-                      "Saya menyetujui seluruh syarat dan ketentuan undang-undang yang berlaku di perusahaan ini.",
-                      style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[300] : Colors.black87),
-                    ),
-                  ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+    );
+  }
 
-            // Tombol Submit
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? const Color(0xFF3A5A98) : const Color(0xFF2F4B7C),
-                  disabledBackgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: (_isAgreed && !_isLoading && _selectedFile != null) ? () => _prosesPendaftaranAdmin(isDark) : null, 
-                child: _isLoading 
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(
-                      "Daftar & Kirim Berkas", 
-                      style: TextStyle(
-                        color: (_isAgreed && _selectedFile != null) ? Colors.white : (isDark ? Colors.grey[600] : Colors.grey[500]),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-              ),
-            ),
-          ],
-        ),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 32, bottom: 8, top: 8),
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.grey[500], letterSpacing: 0.4),
       ),
     );
   }

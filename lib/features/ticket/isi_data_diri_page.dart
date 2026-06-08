@@ -6,6 +6,8 @@ import 'package:http/http.dart'
     as http; // Ditambahkan untuk HTTP Request ke Laravel
 import 'package:shared_preferences/shared_preferences.dart'; // Ditambahkan untuk mengambil Token Auth
 import '../../api_config.dart'; // Ditambahkan untuk konfigurasi Base URL API kamu
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class IsiDataDiriPage extends StatefulWidget {
   final Map<String, dynamic> dataTiket;
@@ -24,6 +26,7 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
   final List<TextEditingController> _tanggalLahirControllers = [];
   final List<TextEditingController> _genderControllers = [];
   final List<TextEditingController> _identitasControllers = [];
+  final List<File?> _fotoIdentitas = [];
 
   int _jumlahPendaki = 1;
 
@@ -49,6 +52,7 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
       _tanggalLahirControllers.add(TextEditingController());
       _genderControllers.add(TextEditingController(text: "L"));
       _identitasControllers.add(TextEditingController());
+      _fotoIdentitas.add(null);
     }
   }
 
@@ -101,94 +105,94 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
-      // Mengemas data dinamis seluruh pendaki dari form textfield
-      List<Map<String, String>> anggotaList = [];
-      for (int i = 0; i < _jumlahPendaki; i++) {
-        anggotaList.add({
-          'nama': _namaControllers[i].text,
-          'alamat': _alamatControllers[i].text,
-          'tanggal_lahir': _formatTanggalKeDatabase(
-            _tanggalLahirControllers[i].text,
-          ),
-          'jenis_kelamin': _genderControllers[i].text,
-          'identitas': _identitasControllers[i].text,
-        });
-      }
-
       String tanggalMasukMentah = widget.dataTiket['tanggal_masuk'] ?? '';
+
       String tanggalNaikFormatted = _formatTanggalKeDatabase(
         tanggalMasukMentah,
       );
 
-      // Mengonversi harga ke tipe data angka (int/double) agar sinkron dengan Laravel
       final hargaRaw = widget.dataTiket['harga_raw'];
-      int hargaPerOrang = 25000; // default fallback
+
+      int hargaPerOrang = 25000;
+
       if (hargaRaw is int) {
         hargaPerOrang = hargaRaw;
       } else if (hargaRaw is String) {
         hargaPerOrang = int.tryParse(hargaRaw) ?? 25000;
-      } else if (widget.dataTiket['harga'] != null) {
-        String cleanHarga = widget.dataTiket['harga'].toString().replaceAll(
-          RegExp(r'[^0-9]'),
-          '',
-        );
-        hargaPerOrang = int.tryParse(cleanHarga) ?? 25000;
       }
 
       int totalPrice = hargaPerOrang * _jumlahPendaki;
 
-      // PENANGANAN FALLBACK AMAN JIKA DATA SEBELUMNYA NULL
-      // Di dalam isi_data_diri_page.dart fungsi storeBooking()
-      // 🔍 CARI KODE INI PADA FUNGSI storeBooking():
       final basecampIdRaw = widget.dataTiket['basecamp_id'];
 
-      // 📝 UBAH BAGIAN INI:
-      int defaultBasecampId =
-          1; // Ubah dari 2 menjadi 1 (sesuai database lokalmu)
-      int basecampId = defaultBasecampId;
+      int basecampId = 1;
 
       if (basecampIdRaw is int) {
         basecampId = basecampIdRaw;
       } else if (basecampIdRaw is String) {
-        basecampId = int.tryParse(basecampIdRaw) ?? defaultBasecampId;
+        basecampId = int.tryParse(basecampIdRaw) ?? 1;
       }
 
-      print("=== MENGIRIM REQUEST BOOKING ===");
-      print("Mengirim Basecamp ID ke Laravel: $basecampId");
-      print("Total Price: $totalPrice");
+      print("=== KIRIM BOOKING ===");
+      print("Basecamp ID : $basecampId");
 
-      final response = await http.post(
+      final request = http.MultipartRequest(
+        'POST',
         Uri.parse("${ApiConfig.baseUrl}/user/bookings"),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'basecamp_id': basecampId,
-          'tanggal_naik': tanggalNaikFormatted,
-          'jumlah_pendaki': _jumlahPendaki,
-          'harga_per_orang': hargaPerOrang,
-          'total_price': totalPrice,
-          'status': 'pending',
-          'checkout_by': 1, // Mengantisipasi constraint default value database
-          'anggota': anggotaList,
-        }),
       );
 
-      print("======= STATUS CODE DARI SERVER: ${response.statusCode} =======");
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      });
+
+      request.fields['basecamp_id'] = basecampId.toString();
+      request.fields['tanggal_naik'] = tanggalNaikFormatted;
+      request.fields['jumlah_pendaki'] = _jumlahPendaki.toString();
+      request.fields['harga_per_orang'] = hargaPerOrang.toString();
+      request.fields['total_price'] = totalPrice.toString();
+
+      for (int i = 0; i < _jumlahPendaki; i++) {
+        request.fields['anggota[$i][nama]'] = _namaControllers[i].text;
+
+        request.fields['anggota[$i][alamat]'] = _alamatControllers[i].text;
+
+        request.fields['anggota[$i][tanggal_lahir]'] = _formatTanggalKeDatabase(
+          _tanggalLahirControllers[i].text,
+        );
+
+        request.fields['anggota[$i][jenis_kelamin]'] =
+            _genderControllers[i].text;
+
+        request.fields['anggota[$i][identitas]'] =
+            _identitasControllers[i].text;
+
+        if (_fotoIdentitas[i] != null) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'anggota[$i][foto_identitas]',
+              _fotoIdentitas[i]!.path,
+            ),
+          );
+        }
+      }
+
+      final streamedResponse = await request.send();
+
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print("STATUS : ${response.statusCode}");
+      print("BODY : ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
+
         return responseData['data'];
-      } else {
-        print("======== ERROR DARI LARAVEL ========");
-        print("Respon Server: ${response.body}");
-        print("====================================");
-        return null;
       }
+
+      return null;
     } catch (e) {
-      print("Error pada fungsi storeBooking: $e");
+      print("STORE BOOKING ERROR : $e");
       return null;
     }
   }
@@ -222,6 +226,21 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
       setState(() {
         _tanggalLahirControllers[index].text =
             "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+      });
+    }
+  }
+
+  Future<void> _pickImage(int index) async {
+    final picker = ImagePicker();
+
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+
+    if (image != null) {
+      setState(() {
+        _fotoIdentitas[index] = File(image.path);
       });
     }
   }
@@ -532,6 +551,52 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
                           isNumeric: true,
                           maxLength: 16,
                         ),
+
+                        const SizedBox(height: 10),
+
+                        Text(
+                          "Foto Identitas",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.grey[300]
+                                : const Color(0xFF2F4B7C),
+                            fontSize: 12,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        GestureDetector(
+                          onTap: () => _pickImage(index),
+                          child: Container(
+                            height: 120,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            child: _fotoIdentitas[index] != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.file(
+                                      _fotoIdentitas[index]!,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                : const Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.upload_file),
+                                        SizedBox(height: 8),
+                                        Text("Upload Foto KTP/Kartu Pelajar"),
+                                      ],
+                                    ),
+                                  ),
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -554,6 +619,21 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
                     ),
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
+                        bool semuaFotoAda = _fotoIdentitas.every(
+                          (foto) => foto != null,
+                        );
+
+                        if (!semuaFotoAda) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Semua pendaki wajib upload foto identitas',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
                         _showKonfirmasiBottomSheet(context, isDark);
                       }
                     },

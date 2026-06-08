@@ -19,5 +19,7 @@ class AppRoutes {
     '/invoice_pembayaran': (context) => const InvoicePembayaranPage(),
     '/history': (context) => const HistoryPage(),
     '/forgot_password': (context) => const ForgotPasswordPage(),
+    '/main-history': (context) =>
+    const MainNavigation(initialIndex: 1),
   };
 }

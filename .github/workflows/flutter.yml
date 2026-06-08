@@ -49,13 +49,33 @@ jobs:
         run: |
           BUILD_TIME=$(date '+%d %b %Y %H:%M UTC')
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          FILE_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          
+          # Mengambil ukuran file dalam satuan bytes
+          FILE_SIZE=$(stat -c%s "$FILE_PATH")
+          MAX_SIZE=52428800 # Batas ketat Telegram Bot API (50 MB dalam bytes)
 
-          CAPTION="📦 SIPANDA Build Success\n🔖 Version: ${{ github.ref_name }}\n🌿 Branch: ${{ github.ref_name }}\n👨‍💻 Commit: ${SHORT_SHA}\n🕒 Build Time: ${BUILD_TIME}\n\n✅ APK berhasil di-build dan siap diinstall."
+          # Menyusun template dasar teks notifikasi
+          BASE_CAPTION=$(printf "📦 *SIPANDA Build Success*\n🔖 Version: %s\n🌿 Branch: %s\n👨‍💻 Commit: %s\n🕒 Build Time: %s" "${{ github.ref_name }}" "${{ github.ref_name }}" "$SHORT_SHA" "$BUILD_TIME")
 
-          curl -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument \
-            -F chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
-            -F document=@build/app/outputs/flutter-apk/app-release.apk \
-            -F caption="$CAPTION"
+          if [ "$FILE_SIZE" -le "$MAX_SIZE" ]; then
+            # Kondisi 1: File di bawah/sama dengan 50MB (Kirim File Langsung)
+            CAPTION=$(printf "%s\n\n✅ APK berhasil di-build dan siap diinstall." "$BASE_CAPTION")
+            curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
+              -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -F document="@$FILE_PATH" \
+              -F caption="$CAPTION" \
+              -F parse_mode="Markdown"
+          else
+            # Kondisi 2: File di atas 50MB (Kirim Link GitHub Artifacts)
+            RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            TEXT=$(printf "%s\n\n⚠️ *File APK terlalu besar (%'d bytes) untuk dikirim langsung via Telegram (>50MB).*\n\n✅ Namun APK tetap aman. Silakan unduh melalui tautan GitHub Artifacts berikut:\n🔗 [Download via GitHub Artifacts](%s)" "$BASE_CAPTION" "$FILE_SIZE" "$RUN_URL")
+            
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d text="$TEXT" \
+              -d parse_mode="Markdown"
+          fi
 
       - name: 📢 Notify Telegram (Success)
         if: success()

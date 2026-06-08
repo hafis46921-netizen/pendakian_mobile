@@ -4,6 +4,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../api_config.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'dart:io';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -72,7 +76,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
       print("STATUS ADMIN REQUEST = ${resPendaftaran.statusCode}");
       print("BODY ADMIN REQUEST = ${resPendaftaran.body}");
-      
+
       if (resPemesanan.statusCode == 200) {
         final Map<String, dynamic> bodyPemesanan = json.decode(
           resPemesanan.body,
@@ -88,7 +92,7 @@ class _HistoryPageState extends State<HistoryPage> {
             resPendaftaran.body,
           );
 
-          rawPendaftaran = bodyPendaftaran['data']?? [];
+          rawPendaftaran = bodyPendaftaran['data'] ?? [];
         }
 
         setState(() {
@@ -427,6 +431,40 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  Future<void> downloadTicketPdf(int bookingId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final dir = await getApplicationDocumentsDirectory();
+
+      final filePath = "${dir.path}/ticket_$bookingId.pdf";
+
+      await Dio().download(
+        "${ApiConfig.baseUrl}/user/bookings/$bookingId/pdf",
+        filePath,
+        options: Options(
+          headers: {
+            "Authorization": "Bearer $token",
+            "Accept": "application/pdf",
+          },
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Tiket berhasil didownload")),
+      );
+
+      OpenFile.open(filePath);
+    } catch (e) {
+      debugPrint("DOWNLOAD ERROR: $e");
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Gagal download tiket: $e")));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -752,27 +790,45 @@ class _HistoryPageState extends State<HistoryPage> {
 
                   // TOMBOL BARU: LIHAT DETAIL E-TIKET
                   if (isPemesananTab)
-                    TextButton.icon(
-                      onPressed: () =>
-                          _tampilkanDetailTiket(currentBooking, isDark),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(50, 30),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      icon: const Icon(
-                        Icons.receipt_long_rounded,
-                        size: 14,
-                        color: Color(0xFF2F4B7C),
-                      ),
-                      label: const Text(
-                        "Lihat Detail",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2F4B7C),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () =>
+                              _tampilkanDetailTiket(currentBooking, isDark),
+                          icon: const Icon(
+                            Icons.receipt_long_rounded,
+                            size: 14,
+                            color: Color(0xFF2F4B7C),
+                          ),
+                          label: const Text(
+                            "Lihat Detail",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2F4B7C),
+                            ),
+                          ),
                         ),
-                      ),
+
+                        TextButton.icon(
+                          onPressed: () =>
+                              downloadTicketPdf(currentBooking['id']),
+                          icon: const Icon(
+                            Icons.download,
+                            size: 14,
+                            color: Colors.green,
+                          ),
+                          label: const Text(
+                            "Download Tiket",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                 ],
               ),

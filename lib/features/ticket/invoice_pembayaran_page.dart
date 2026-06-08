@@ -8,13 +8,10 @@ class InvoicePembayaranPage extends StatefulWidget {
   const InvoicePembayaranPage({super.key});
 
   @override
-  State<InvoicePembayaranPage> createState() =>
-      _InvoicePembayaranPageState();
+  State<InvoicePembayaranPage> createState() => _InvoicePembayaranPageState();
 }
 
-class _InvoicePembayaranPageState
-    extends State<InvoicePembayaranPage> {
-
+class _InvoicePembayaranPageState extends State<InvoicePembayaranPage> {
   Future<void> _mulaiPembayaran(String? snapToken) async {
     if (snapToken == null || snapToken.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -31,10 +28,7 @@ class _InvoicePembayaranPageState
     );
 
     try {
-      await launchUrl(
-        url,
-        mode: LaunchMode.externalApplication,
-      );
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -47,22 +41,18 @@ class _InvoicePembayaranPageState
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final Map<String, dynamic> bookingData =
-        ModalRoute.of(context)!.settings.arguments
-            as Map<String, dynamic>;
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
 
     String orderId =
         bookingData['order_id'] ??
         'SG-${DateTime.now().millisecondsSinceEpoch}';
 
-    String status =
-        bookingData['status'] ?? 'pending';
+    String status = bookingData['status'] ?? 'pending';
 
-    String? snapToken =
-        bookingData['snap_token'];
+    String? snapToken = bookingData['snap_token'];
 
     int totalPrice = 0;
 
@@ -72,26 +62,18 @@ class _InvoicePembayaranPageState
       if (priceRaw is num) {
         totalPrice = priceRaw.toInt();
       } else {
-        totalPrice =
-            double.tryParse(priceRaw.toString())
-                ?.toInt() ??
-            0;
+        totalPrice = double.tryParse(priceRaw.toString())?.toInt() ?? 0;
       }
     }
 
-    bool isButtonEnabled =
-        snapToken != null && snapToken.isNotEmpty;
+    bool isButtonEnabled = snapToken != null && snapToken.isNotEmpty;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? Colors.black : const Color(0xFFF4F6F9),
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF4F6F9),
       appBar: AppBar(
         title: const Text(
           "Instruksi Pembayaran",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
@@ -99,24 +81,20 @@ class _InvoicePembayaranPageState
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius:
-                    BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(
-                      isDark ? 0.3 : 0.05,
-                    ),
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
-                  )
+                  ),
                 ],
               ),
               child: Column(
@@ -125,9 +103,7 @@ class _InvoicePembayaranPageState
                     "Total Pembayaran",
                     style: TextStyle(
                       fontSize: 13,
-                      color: isDark
-                          ? Colors.grey[400]
-                          : Colors.grey[600],
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -146,9 +122,7 @@ class _InvoicePembayaranPageState
                     "Order ID: $orderId",
                     style: TextStyle(
                       fontSize: 11,
-                      color: isDark
-                          ? Colors.grey[500]
-                          : Colors.grey,
+                      color: isDark ? Colors.grey[500] : Colors.grey,
                     ),
                   ),
                 ],
@@ -162,9 +136,7 @@ class _InvoicePembayaranPageState
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: isDark
-                    ? Colors.white
-                    : const Color(0xFF2F4B7C),
+                color: isDark ? Colors.white : const Color(0xFF2F4B7C),
               ),
             ),
 
@@ -175,18 +147,12 @@ class _InvoicePembayaranPageState
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius:
-                    BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(15),
               ),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildBankRow(
-                    "Sistem Pembayaran:",
-                    "Online Gateway",
-                    isDark,
-                  ),
+                  _buildBankRow("Sistem Pembayaran:", "Online Gateway", isDark),
                   _buildBankRow(
                     "Status Booking:",
                     status.toUpperCase(),
@@ -204,37 +170,26 @@ class _InvoicePembayaranPageState
               height: 48,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isButtonEnabled
-                          ? Colors.green[700]
-                          : Colors.grey[400],
+                  backgroundColor: isButtonEnabled
+                      ? Colors.green[700]
+                      : Colors.grey[400],
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 onPressed: isButtonEnabled
-                    ? () => _mulaiPembayaran(
-                        snapToken,
-                      )
+                    ? () => _mulaiPembayaran(snapToken)
                     : null,
                 child: Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.payment,
-                      color: Colors.white,
-                    ),
+                    const Icon(Icons.payment, color: Colors.white),
                     const SizedBox(width: 10),
                     Text(
-                      kIsWeb
-                          ? "Bayar Sekarang (Snap Web)"
-                          : "Bayar Sekarang",
+                      kIsWeb ? "Bayar Sekarang (Snap Web)" : "Bayar Sekarang",
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight:
-                            FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -247,33 +202,20 @@ class _InvoicePembayaranPageState
             Container(
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(
-                  isDark ? 0.15 : 0.1,
-                ),
-                borderRadius:
-                    BorderRadius.circular(10),
-                border: Border.all(
-                  color: Colors.amber.withOpacity(
-                    0.5,
-                  ),
-                ),
+                color: Colors.amber.withOpacity(isDark ? 0.15 : 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.withOpacity(0.5)),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.info_outline,
-                    color: Colors.amber,
-                    size: 20,
-                  ),
+                  const Icon(Icons.info_outline, color: Colors.amber, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       "Setelah pembayaran berhasil dilakukan, booking akan tetap berstatus PENDING sampai diverifikasi oleh admin basecamp.",
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark
-                            ? Colors.amber[200]
-                            : Colors.amber[900],
+                        color: isDark ? Colors.amber[200] : Colors.amber[900],
                         height: 1.4,
                       ),
                     ),
@@ -295,14 +237,14 @@ class _InvoicePembayaranPageState
                         : const Color(0xFF2F4B7C),
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 onPressed: () {
-                  Navigator.pushReplacementNamed(
+                  Navigator.pushNamedAndRemoveUntil(
                     context,
-                    '/history',
+                    '/main-history',
+                    (route) => false,
                   );
                 },
                 child: Text(
@@ -311,8 +253,7 @@ class _InvoicePembayaranPageState
                     color: isDark
                         ? const Color(0xFF6A93D4)
                         : const Color(0xFF2F4B7C),
-                    fontWeight:
-                        FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -330,19 +271,15 @@ class _InvoicePembayaranPageState
     bool isStatus = false,
   }) {
     return Padding(
-      padding:
-          const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
-              color: isDark
-                  ? Colors.grey[400]
-                  : Colors.grey[700],
+              color: isDark ? Colors.grey[400] : Colors.grey[700],
             ),
           ),
           Text(
@@ -352,9 +289,7 @@ class _InvoicePembayaranPageState
               fontWeight: FontWeight.bold,
               color: isStatus
                   ? Colors.orange
-                  : (isDark
-                        ? Colors.white
-                        : Colors.black87),
+                  : (isDark ? Colors.white : Colors.black87),
             ),
           ),
         ],

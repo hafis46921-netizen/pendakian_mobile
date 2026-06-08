@@ -35,7 +35,6 @@ class _HomePageState extends State<HomePage> {
   List<dynamic> rekomendasiSaran = [];
   String queryPencarian = "";
 
-  // Banner tetap menggunakan asset lokal untuk estetika halaman atas
   final List<String> bannerImages = [
     "assets/images/puncak_ciremai.jpg",
     "assets/images/gunung_prau.jpg",
@@ -45,8 +44,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-
-    // PERBAIKAN: Pastikan getUser selesai membaca SharedPreferences baru fetch data gunung
     getUser().then((_) {
       initFetchSemuaGunung();
     });
@@ -82,7 +79,6 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // Mengembalikan Future<void> agar proses asinkronusnya bisa ditunggu (.then())
   Future<void> getUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
@@ -141,9 +137,6 @@ class _HomePageState extends State<HomePage> {
 
     final data = await getGunung();
 
-    debugPrint("JUMLAH GUNUNG : ${data.length}");
-    debugPrint("DATA GUNUNG : $data");
-
     if (mounted) {
       setState(() {
         semuaGunungData = data;
@@ -152,7 +145,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // LOGIKA FLUTTER MENGIKUTI LARAVEL (MENGIRIMKAN TOKEN SANCTUM)
   Future<List<dynamic>> getGunung() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -171,20 +163,8 @@ class _HomePageState extends State<HomePage> {
           .get(Uri.parse("${ApiConfig.baseUrl}/user/gunungs"), headers: headers)
           .timeout(const Duration(seconds: 5));
 
-      debugPrint("STATUS : ${response.statusCode}");
-      debugPrint("BODY : ${response.body}");
-
       if (response.statusCode == 200) {
         final decodedData = jsonDecode(response.body);
-
-        // Format Laravel Pagination:
-        // {
-        //   "message": "...",
-        //   "data": {
-        //      "current_page":1,
-        //      "data":[ ... ]
-        //   }
-        // }
 
         if (decodedData is Map && decodedData.containsKey('data')) {
           final paginationData = decodedData['data'];
@@ -194,19 +174,13 @@ class _HomePageState extends State<HomePage> {
           }
         }
 
-        // Jika API mengembalikan List langsung
         if (decodedData is List) {
           return List<dynamic>.from(decodedData);
         }
-      } else {
-        debugPrint(
-          "Laravel Menolak Akses (Status Code: ${response.statusCode})",
-        );
       }
     } catch (e) {
-      debugPrint("Koneksi API Gagal / Format Salah: $e");
+      debugPrint("Koneksi API Gagal: $e");
     }
-
     return [];
   }
 
@@ -245,12 +219,13 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. HEADER AREA & SEARCH BAR
+            // 1. HEADER AREA & SEARCH BAR (PERBAIKAN: Tinggi disesuaikan)
             Stack(
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  height: 220,
+                  height:
+                      250, // PERBAIKAN: Dinaikkan ke 250 agar Search Bar tidak terpotong hero banner
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xFF1E3A8A), Color(0xFF2F4B7C)],
@@ -569,25 +544,60 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 25),
 
-            // 3. DAFTAR GUNUNG TEXT HEADER
+            // 3. DAFTAR GUNUNG TEXT HEADER & LIHAT SEMUA (PERBAIKAN: Digabung jadi Row)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    "Daftar Gunung",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF2F4B7C),
+                  Expanded(
+                    // <--- BUNGKUS DENGAN EXPANDED
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Daftar Gunung",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF2F4B7C),
+                          ),
+                        ),
+                        Text(
+                          "Nikmati pengalaman mendaki yang tak tergantikan",
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                          maxLines:
+                              1, // Tambahkan ini agar rapi jadi 1 baris berakhiran ... jika kepanjangan
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    "Nikmati pengalaman mendaki yang tak tergantikan",
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  const SizedBox(
+                    width: 10,
+                  ), // Beri jarak sedikit antara teks dan tombol
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DaftarGunungPage(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      "Lihat semua",
+                      style: TextStyle(
+                        color: Color(0xFF2F4B7C),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -595,7 +605,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 15),
 
-            // 4. GRID DAFTAR GUNUNG (MURNI API DATABASE)
+            // 4. GRID DAFTAR GUNUNG
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15),
               child: _isApiLoading
@@ -616,60 +626,25 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                     )
-                  : Column(
-                      children: [
-                        GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          itemCount: semuaGunungData.length,
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                childAspectRatio: 0.7,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 10,
-                              ),
-                          itemBuilder: (context, index) {
-                            return gunungCardNew(
-                              context,
-                              semuaGunungData[index],
-                            );
-                          },
-                        ),
-
-                        // TOMBOL LIHAT SEMUA STABIL
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              top: 15,
-                              bottom: 25,
-                              right: 5,
-                            ),
-                            child: TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const DaftarGunungPage(),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                "Lihat semua",
-                                style: TextStyle(
-                                  color: Color(0xFF2F4B7C),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
+                  : GridView.builder(
+                      padding: EdgeInsets.zero,
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      itemCount: semuaGunungData.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            childAspectRatio: 0.7,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 10,
                           ),
-                        ),
-                      ],
+                      itemBuilder: (context, index) {
+                        return gunungCardNew(context, semuaGunungData[index]);
+                      },
                     ),
             ),
+            // PERBAIKAN EXTRA: Jarak aman terbawah agar GridView tidak terpotong main navigation HP
+            const SizedBox(height: 80),
           ],
         ),
       ),
