@@ -11,28 +11,28 @@ class PencarianBasecampPage extends StatelessWidget {
 
   // Mengambil data Basecamp secara dinamis berdasarkan ID Gunung dari API Laravel
   Future<List<dynamic>> fetchBasecampsByGunung(int gunungId) async {
-  try {
-    final response = await http
-        .get(
-          Uri.parse(
-            "${ApiConfig.baseUrl}/user/basecamps?gunung_id=$gunungId",
-          ),
-        )
-        .timeout(const Duration(seconds: 5));
+    try {
+      final response = await http
+          .get(
+            Uri.parse(
+              "${ApiConfig.baseUrl}/user/basecamps?gunung_id=$gunungId",
+            ),
+          )
+          .timeout(const Duration(seconds: 5));
 
-    if (response.statusCode == 200) {
-      debugPrint("BASECAMP RESPONSE: ${response.body}");
+      if (response.statusCode == 200) {
+        debugPrint("BASECAMP RESPONSE: ${response.body}");
 
-      final decodedData = jsonDecode(response.body);
+        final decodedData = jsonDecode(response.body);
 
-      return decodedData['data']['data'] ?? [];
+        return decodedData['data']['data'] ?? [];
+      }
+    } catch (e) {
+      debugPrint("Koneksi API Basecamp Gagal: $e");
     }
-  } catch (e) {
-    debugPrint("Koneksi API Basecamp Gagal: $e");
-  }
 
-  return [];
-}
+    return [];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,24 +51,20 @@ class PencarianBasecampPage extends StatelessWidget {
                 SizedBox(
                   height: 220,
                   width: double.infinity,
-                  child: fotoGunung.startsWith('assets/')
-                      ? Image.asset(fotoGunung, fit: BoxFit.cover)
+                  child: (fotoGunung.isEmpty)
+                      ? Image.asset(
+                          "assets/images/puncak_ciremai.jpg",
+                          fit: BoxFit.cover,
+                        )
                       : Image.network(
                           "${ApiConfig.baseUrl}/storage/$fotoGunung",
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                color: isDark
-                                    ? Colors.grey[850]
-                                    : Colors.grey[300],
-                                child: Icon(
-                                  Icons.image,
-                                  size: 50,
-                                  color: isDark
-                                      ? Colors.grey[600]
-                                      : Colors.grey,
-                                ),
-                              ),
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              "assets/images/puncak_ciremai.jpg",
+                              fit: BoxFit.cover,
+                            );
+                          },
                         ),
                 ),
                 Container(height: 220, color: Colors.black.withOpacity(0.15)),
@@ -184,14 +180,14 @@ class PencarianBasecampPage extends StatelessWidget {
 
                           // Konversi harga tiket ke representasi teks IDR
                           final harga =
-    double.tryParse(basecamp['harga_tiket'].toString())?.toInt() ?? 0;
+                              double.tryParse(
+                                basecamp['harga_tiket'].toString(),
+                              )?.toInt() ??
+                              0;
 
-String formattedHarga = harga > 0
-    ? "Rp ${harga.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (Match m) => '${m[1]}.',
-      )}"
-    : "Rp 25.000";
+                          String formattedHarga = harga > 0
+                              ? "Rp ${harga.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}"
+                              : "Rp 25.000";
                           return _buildBasecampCard(
                             context: context,
                             isDark: isDark,
@@ -201,7 +197,13 @@ String formattedHarga = harga > 0
                             weekday: formattedHarga,
                             weekend:
                                 formattedHarga, // Mengikuti data tunggal 'harga_tiket' dari skema kamu
-                            imagePath: basecamp['foto_utama'] ?? fotoGunung,
+                            imagePath:
+                                (basecamp['foto_utama']
+                                        ?.toString()
+                                        .isNotEmpty ??
+                                    false)
+                                ? basecamp['foto_utama']
+                                : "",
                           );
                         },
                       );
@@ -265,19 +267,20 @@ String formattedHarga = harga > 0
               child: SizedBox(
                 height: 130,
                 width: double.infinity,
-                child: imagePath.startsWith('assets/')
-                    ? Image.asset(imagePath, fit: BoxFit.cover)
+                child: imagePath.isEmpty
+                    ? Image.asset(
+                        "assets/images/puncak_ciremai.jpg",
+                        fit: BoxFit.cover,
+                      )
                     : Image.network(
                         "${ApiConfig.baseUrl}/storage/$imagePath",
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: isDark ? Colors.grey[850] : Colors.grey[300],
-                          child: const Icon(
-                            Icons.image,
-                            size: 40,
-                            color: Colors.grey,
-                          ),
-                        ),
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            "assets/images/puncak_ciremai.jpg",
+                            fit: BoxFit.cover,
+                          );
+                        },
                       ),
               ),
             ),

@@ -431,6 +431,66 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  Future<void> cancelAdminRequest(int requestId) async {
+    bool konfirmasi =
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Batalkan Pengajuan"),
+            content: const Text(
+              "Apakah Anda yakin ingin membatalkan pengajuan admin ini?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Kembali"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  "Ya, Batalkan",
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!konfirmasi) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final response = await http.delete(
+        Uri.parse("${ApiConfig.baseUrl}/user/admin-requests/$requestId"),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Pengajuan berhasil dibatalkan")),
+        );
+
+        fetchHistory();
+      } else {
+        final body = jsonDecode(response.body);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(body['message'] ?? "Gagal membatalkan pengajuan"),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("ERROR CANCEL REQUEST: $e");
+    }
+  }
+
   Future<void> downloadTicketPdf(int bookingId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -855,11 +915,16 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ),
                   ),
-                  if (isPemesananTab &&
-                      currentStatus.toLowerCase() == 'pending') ...[
+                  if (currentStatus.toLowerCase() == 'pending') ...[
                     const SizedBox(height: 12),
                     GestureDetector(
-                      onTap: () => cancelBooking(currentBooking['id']),
+                      onTap: () {
+                        if (isPemesananTab) {
+                          cancelBooking(currentBooking['id']);
+                        } else {
+                          cancelAdminRequest(currentBooking['id']);
+                        }
+                      },
                       child: const Text(
                         "Batalkan",
                         style: TextStyle(
