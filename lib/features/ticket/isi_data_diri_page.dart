@@ -9,6 +9,16 @@ import '../../api_config.dart'; // Ditambahkan untuk konfigurasi Base URL API ka
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
+String getSafeImage(dynamic image) {
+  if (image == null) return 'assets/images/puncak_ciremai.jpg';
+
+  if (image is String && image.trim().isNotEmpty) {
+    return image;
+  }
+
+  return 'assets/images/puncak_ciremai.jpg';
+}
+
 class IsiDataDiriPage extends StatefulWidget {
   final Map<String, dynamic> dataTiket;
 
@@ -422,8 +432,7 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    String imagePath =
-        widget.dataTiket['image'] ?? 'assets/images/puncak_ciremai.jpg';
+    String imagePath = getSafeImage(widget.dataTiket['image']);
 
     return Scaffold(
       backgroundColor: isDark ? Colors.black : const Color(0xFFF4F6F9),
@@ -440,11 +449,15 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
                     height: 220,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage(imagePath),
-                        fit: BoxFit.cover,
+                       image: DecorationImage(
+                          image: AssetImage(
+                            imagePath.isNotEmpty
+                                ? imagePath
+                                : 'assets/images/puncak_ciremai.jpg',
+                          ),
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ),
                   ),
                   Container(height: 220, color: Colors.black.withOpacity(0.3)),
                   Positioned(

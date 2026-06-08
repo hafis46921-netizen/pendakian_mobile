@@ -4,6 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart'; // 🛠️ TAMBAHKA
 import 'peraturan_dialog.dart';
 import '../auth/login_page.dart';
 
+String getSafeImage(dynamic image) {
+  if (image == null) return 'assets/images/puncak_ciremai.jpg';
+
+  if (image is String && image.trim().isNotEmpty) {
+    return image;
+  }
+
+  return 'assets/images/puncak_ciremai.jpg';
+}
+
 class RegistrasiTiketPage extends StatefulWidget {
   const RegistrasiTiketPage({super.key, required this.gunungData});
 
@@ -100,9 +110,7 @@ class _RegistrasiTiketPageState extends State<RegistrasiTiketPage> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     String namaGunung = widget.gunungData['nama'] ?? "Gunung Ciremai";
-    String imagePath =
-        widget.gunungData['image'] ?? 'assets/images/puncak_ciremai.jpg';
-
+    String imagePath = getSafeImage(widget.gunungData['image']);
     String tarifDasarStr = widget.gunungData['tarif_weekday'] ?? "Rp 25.000";
     int tarifDasar = _parseHarga(tarifDasarStr);
     int totalBiayaFinal = _hitungTotalBiaya(tarifDasar);
