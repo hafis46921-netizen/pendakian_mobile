@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../api_config.dart';
+import 'package:flutter/services.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -18,7 +19,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController();
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -38,7 +39,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _nameController.text = prefs.getString('name') ?? '';
-      _usernameController.text = prefs.getString('username') ?? '';
+
       _emailController.text = prefs.getString('email') ?? '';
       _phoneController.text = prefs.getString('no_hp') ?? '';
       _addressController.text = prefs.getString('alamat') ?? '';
@@ -72,7 +73,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('${ApiConfig.baseUrl}/profile/update'),
+        Uri.parse('${ApiConfig.baseUrl}/user/profile'),
       );
 
       request.headers.addAll({
@@ -80,10 +81,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'Accept': 'application/json',
       });
 
+      request.fields['_method'] = 'PUT';
+
       request.fields['name'] = _nameController.text;
-      request.fields['username'] = _usernameController.text;
+
       request.fields['email'] = _emailController.text;
-      request.fields['no_hp'] = _phoneController.text;
+      request.fields['phone'] = _phoneController.text;
       request.fields['alamat'] = _addressController.text;
 
       if (_imageFile != null) {
@@ -99,12 +102,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         var responseData = json.decode(response.body);
 
         await prefs.setString('name', _nameController.text);
-        await prefs.setString('username', _usernameController.text);
         await prefs.setString('email', _emailController.text);
         await prefs.setString('no_hp', _phoneController.text);
         await prefs.setString('alamat', _addressController.text);
 
-        if (responseData['user'] != null && responseData['user']['foto'] != null) {
+        if (responseData['user'] != null &&
+            responseData['user']['foto'] != null) {
           await prefs.setString('foto', responseData['user']['foto']);
         }
 
@@ -116,12 +119,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _isDataChanged = true;
         Navigator.pop(context, true);
       } else {
+        print("STATUS : ${response.statusCode}");
+        print("BODY : ${response.body}");
+
+        throw Exception(response.body);
         throw Exception('Gagal memperbarui profil di server');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -132,11 +139,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     // iOS Theme Colors
-    final backgroundColor = isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7);
-    final cardColor = isDark ? const Color(0xFF1C1C1E) : Colors.white; // Fixed: Added '?'
-    final dividerColor = isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA);
+    final backgroundColor = isDark
+        ? const Color(0xFF000000)
+        : const Color(0xFFF2F2F7);
+    final cardColor = isDark
+        ? const Color(0xFF1C1C1E)
+        : Colors.white; // Fixed: Added '?'
+    final dividerColor = isDark
+        ? const Color(0xFF38383A)
+        : const Color(0xFFE5E5EA);
 
     return PopScope(
       canPop: true,
@@ -159,7 +172,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
           leading: CupertinoButton(
             padding: EdgeInsets.zero,
-            child: const Icon(CupertinoIcons.chevron_back, size: 24, color: Color(0xFF007AFF)),
+            child: const Icon(
+              CupertinoIcons.chevron_back,
+              size: 24,
+              color: Color(0xFF007AFF),
+            ),
             onPressed: () => Navigator.pop(context, true),
           ),
           bottom: PreferredSize(
@@ -176,7 +193,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 24),
-                      
+
                       // Avatar Section
                       Center(
                         child: Column(
@@ -188,24 +205,39 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                   Container(
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: cardColor, width: 3),
+                                      border: Border.all(
+                                        color: cardColor,
+                                        width: 3,
+                                      ),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.black.withOpacity(0.06),
                                           blurRadius: 12,
-                                        )
-                                      ]
+                                        ),
+                                      ],
                                     ),
                                     child: CircleAvatar(
                                       radius: 50,
-                                      backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+                                      backgroundColor: isDark
+                                          ? Colors.grey[800]
+                                          : Colors.grey[300],
                                       backgroundImage: _imageFile != null
                                           ? FileImage(_imageFile!)
-                                          : (_currentFotoUrl != null && _currentFotoUrl!.isNotEmpty)
-                                              ? NetworkImage("${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$_currentFotoUrl")
-                                              : null, // Fixed: Removed redundant casting
-                                      child: (_imageFile == null && (_currentFotoUrl == null || _currentFotoUrl!.isEmpty))
-                                          ? Icon(CupertinoIcons.person_fill, size: 50, color: Colors.grey[500])
+                                          : (_currentFotoUrl != null &&
+                                                _currentFotoUrl!.isNotEmpty)
+                                          ? NetworkImage(
+                                              "${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/$_currentFotoUrl",
+                                            )
+                                          : null, // Fixed: Removed redundant casting
+                                      child:
+                                          (_imageFile == null &&
+                                              (_currentFotoUrl == null ||
+                                                  _currentFotoUrl!.isEmpty))
+                                          ? Icon(
+                                              CupertinoIcons.person_fill,
+                                              size: 50,
+                                              color: Colors.grey[500],
+                                            )
                                           : null,
                                     ),
                                   ),
@@ -218,7 +250,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                         color: Color(0xFF2F4B7C),
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(CupertinoIcons.camera_fill, color: Colors.white, size: 16),
+                                      child: const Icon(
+                                        CupertinoIcons.camera_fill,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -228,12 +264,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             CupertinoButton(
                               padding: EdgeInsets.zero,
                               onPressed: _pickImage,
-                              child: const Text("Edit Foto", style: TextStyle(fontSize: 14, color: Color(0xFF007AFF), fontWeight: FontWeight.w400)),
+                              child: const Text(
+                                "Edit Foto",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF007AFF),
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      
+
                       const SizedBox(height: 15),
                       _buildSectionHeader("INFORMASI PENGGUNA"),
 
@@ -251,33 +294,56 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               controller: _nameController,
                               placeholder: "Masukkan nama lengkap",
                               isDark: isDark,
-                              validator: (v) => v == null || v.isEmpty ? 'Nama tidak boleh kosong' : null,
+                              validator: (v) => v == null || v.isEmpty
+                                  ? 'Nama tidak boleh kosong'
+                                  : null,
                             ),
-                            Container(margin: const EdgeInsets.only(left: 16), color: dividerColor, height: 0.5), // Fixed: margin changed to only(left: 16)
-                            _buildiOSField(
-                              label: "Username",
-                              controller: _usernameController,
-                              placeholder: "Masukkan username",
-                              isDark: isDark,
-                              validator: (v) => v == null || v.isEmpty ? 'Username tidak boleh kosong' : null,
-                            ),
-                            Container(margin: const EdgeInsets.only(left: 16), color: dividerColor, height: 0.5), // Fixed: margin changed to only(left: 16)
+                            Container(
+                              margin: const EdgeInsets.only(left: 16),
+                              color: dividerColor,
+                              height: 0.5,
+                            ), // Fixed: margin changed to only(left: 16)
+                            Container(
+                              margin: const EdgeInsets.only(left: 16),
+                              color: dividerColor,
+                              height: 0.5,
+                            ), // Fixed: margin changed to only(left: 16)
                             _buildiOSField(
                               label: "Email",
                               controller: _emailController,
                               placeholder: "alamat@email.com",
                               keyboardType: TextInputType.emailAddress,
                               isDark: isDark,
-                              validator: (v) => v == null || v.isEmpty ? 'Email tidak boleh kosong' : null,
+                              validator: (v) => v == null || v.isEmpty
+                                  ? 'Email tidak boleh kosong'
+                                  : null,
                             ),
-                            Container(margin: const EdgeInsets.only(left: 16), color: dividerColor, height: 0.5), // Fixed: margin changed to only(left: 16)
+                            Container(
+                              margin: const EdgeInsets.only(left: 16),
+                              color: dividerColor,
+                              height: 0.5,
+                            ), // Fixed: margin changed to only(left: 16)
                             _buildiOSField(
                               label: "Telepon",
                               controller: _phoneController,
                               placeholder: "08xxxxxxxxxx",
                               keyboardType: TextInputType.phone,
                               isDark: isDark,
-                              validator: (v) => v == null || v.isEmpty ? 'Nomor telepon tidak boleh kosong' : null,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(13),
+                              ],
+                              validator: (v) {
+                                if (v == null || v.isEmpty) {
+                                  return 'Nomor telepon tidak boleh kosong';
+                                }
+
+                                if (v.length < 10 || v.length > 13) {
+                                  return 'Nomor telepon harus 10-13 digit';
+                                }
+
+                                return null;
+                              },
                             ),
                           ],
                         ),
@@ -297,12 +363,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           placeholder: "Tulis alamat lengkap rumah Anda",
                           maxLines: 3,
                           isDark: isDark,
-                          validator: (v) => v == null || v.isEmpty ? 'Alamat tidak boleh kosong' : null,
+                          validator: (v) => v == null || v.isEmpty
+                              ? 'Alamat tidak boleh kosong'
+                              : null,
                         ),
                       ),
 
                       const SizedBox(height: 40),
-                      
+
                       // iOS Call To Action Button
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -314,7 +382,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             onPressed: _saveProfile,
                             child: const Text(
                               "Simpan Perubahan",
-                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.white),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -333,7 +405,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
       padding: const EdgeInsets.only(left: 32, bottom: 8, top: 8),
       child: Text(
         title,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.grey[500], letterSpacing: 0.4),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          color: Colors.grey[500],
+          letterSpacing: 0.4,
+        ),
       ),
     );
   }
@@ -346,6 +423,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     TextInputType? keyboardType,
     int maxLines = 1,
     String? Function(String?)? validator,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -353,15 +431,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 15),
+        inputFormatters: inputFormatters,
+        style: TextStyle(
+          color: isDark ? Colors.white : Colors.black,
+          fontSize: 15,
+        ),
         onChanged: (_) => _isDataChanged = true,
         validator: validator,
         decoration: InputDecoration(
           alignLabelWithHint: true,
           labelText: label,
-          labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 14, fontWeight: FontWeight.w500),
+          labelStyle: TextStyle(
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
           hintText: placeholder,
-          hintStyle: TextStyle(color: isDark ? Colors.grey[700] : Colors.grey[400], fontSize: 15),
+          hintStyle: TextStyle(
+            color: isDark ? Colors.grey[700] : Colors.grey[400],
+            fontSize: 15,
+          ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -376,7 +465,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _usernameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
