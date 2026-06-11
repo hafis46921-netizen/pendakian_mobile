@@ -56,7 +56,7 @@ jobs:
           MAX_SIZE=52428800 # Batas ketat Telegram Bot API (50 MB dalam bytes)
 
           # Menyusun template dasar teks notifikasi
-          BASE_CAPTION=$(printf "📦 *SIPANDA Build Success*\n🔖 Version: %s\n🌿 Branch: %s\n👨‍💻 Commit: %s\n🕒 Build Time: %s" "${{ github.ref_name }}" "${{ github.ref_name }}" "$SHORT_SHA" "$BUILD_TIME")
+          BASE_CAPTION=$(printf "📦 *SUMMITGO Build Success*\n🔖 Version: %s\n🌿 Branch: %s\n👨‍💻 Commit: %s\n🕒 Build Time: %s" "${{ github.ref_name }}" "${{ github.ref_name }}" "$SHORT_SHA" "$BUILD_TIME")
 
           if [ "$FILE_SIZE" -le "$MAX_SIZE" ]; then
             # Kondisi 1: File di bawah/sama dengan 50MB (Kirim File Langsung)
