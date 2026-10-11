@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // Ditambahkan untu
 import '../../api_config.dart'; // Ditambahkan untuk konfigurasi Base URL API kamu
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/material.dart';
 
 String getSafeImage(dynamic image) {
   if (image == null) return 'assets/images/puncak_ciremai.jpg';
