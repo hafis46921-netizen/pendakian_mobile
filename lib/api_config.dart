@@ -1,6 +1,6 @@
 class ApiConfig {
   static const String baseUrl =
-      "https://pendakian.cicd.my.id/api";
+      "http://192.168.1.8:8000/api";
 
   static String get storageUrl =>
       baseUrl.replaceAll('/api', '');
