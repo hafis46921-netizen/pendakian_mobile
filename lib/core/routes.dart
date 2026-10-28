@@ -8,6 +8,7 @@ import '../features/auth/splash_screen.dart';
 import '../features/ticket/invoice_pembayaran_page.dart';
 import '../features/home/history_page.dart';
 import '../features/auth/forgot_password_page.dart';
+import '../features/ticket/sewa_peralatan_page.dart';
 
 class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
@@ -19,7 +20,12 @@ class AppRoutes {
     '/invoice_pembayaran': (context) => const InvoicePembayaranPage(),
     '/history': (context) => const HistoryPage(),
     '/forgot_password': (context) => const ForgotPasswordPage(),
-    '/main-history': (context) =>
-    const MainNavigation(initialIndex: 1),
+    '/main-history': (context) => const MainNavigation(initialIndex: 1),
+    '/sewa_peralatan': (context) {
+      // 1. Tangkap argumen yang dikirim dari halaman sebelumnya
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?; 
+      // 2. Lempar data tersebut ke dalam parameter SewaPeralatanPage
+      return SewaPeralatanPage(dataTiket: args ?? {});
+    },
   };
 }

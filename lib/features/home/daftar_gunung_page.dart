@@ -36,7 +36,7 @@ class _DaftarGunungPageState extends State<DaftarGunungPage> {
     try {
       final response = await http
           .get(Uri.parse("${ApiConfig.baseUrl}/user/gunungs"))
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
 
       print("STATUS GUNUNG = ${response.statusCode}");
       print("BODY GUNUNG = ${response.body}");

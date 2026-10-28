@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // Ditambahkan untu
 import '../../api_config.dart'; // Ditambahkan untuk konfigurasi Base URL API kamu
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 String getSafeImage(dynamic image) {
   if (image == null) return 'assets/images/puncak_ciremai.jpg';
@@ -365,56 +365,36 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () async {
+                    onPressed: () {
                       final navigator = Navigator.of(context);
-                      final scaffoldMessenger = ScaffoldMessenger.of(context);
-
                       navigator.pop(); // Tutup bottom sheet tinjau
 
-                      // Tampilkan Loading Dialog
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF2F4B7C),
+                      List<Map<String, dynamic>> dataAnggota = [];
+                      for (int i = 0; i < _jumlahPendaki; i++) {
+                        dataAnggota.add({
+                          'nama': _namaControllers[i].text,
+                          'alamat': _alamatControllers[i].text,
+                          'tanggal_lahir': _formatTanggalKeDatabase(
+                            _tanggalLahirControllers[i].text,
                           ),
-                        ),
-                      );
-
-                      // Eksekusi fungsi HTTP POST menyimpan ke database Laravel
-                      final bookingResult = await storeBooking();
-
-                      // Tutup Loading Dialog
-                      navigator.pop();
-
-                      if (bookingResult != null) {
-                        scaffoldMessenger.showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Data berhasil disimpan! Membuka halaman pembayaran...",
-                            ),
-                          ),
-                        );
-
-                        // Arahkan menuju halaman invoice
-                        navigator.pushReplacementNamed(
-                          '/invoice_pembayaran',
-                          arguments: bookingResult,
-                        );
-                      } else {
-                        scaffoldMessenger.showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Gagal memproses pendaftaran. Coba periksa database atau log Laravel kamu.",
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                          'jenis_kelamin': _genderControllers[i].text,
+                          'identitas': _identitasControllers[i].text,
+                          'foto_identitas': _fotoIdentitas[i],
+                        });
                       }
+
+                      Map<String, dynamic> combinedData = Map.from(
+                        widget.dataTiket,
+                      );
+                      combinedData['anggota'] = dataAnggota;
+
+                      navigator.pushNamed(
+                        '/sewa_peralatan',
+                        arguments: combinedData,
+                      );
                     },
                     child: const Text(
-                      "Bayar Sekarang",
+                      "Lanjut ke Sewa Peralatan",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -450,15 +430,15 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
                     height: 220,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                       image: DecorationImage(
-                          image: AssetImage(
-                            imagePath.isNotEmpty
-                                ? imagePath
-                                : 'assets/images/puncak_ciremai.jpg',
-                          ),
-                          fit: BoxFit.cover,
+                      image: DecorationImage(
+                        image: AssetImage(
+                          imagePath.isNotEmpty
+                              ? imagePath
+                              : 'assets/images/puncak_ciremai.jpg',
                         ),
+                        fit: BoxFit.cover,
                       ),
+                    ),
                   ),
                   Container(height: 220, color: Colors.black.withOpacity(0.3)),
                   Positioned(
@@ -593,10 +573,15 @@ class _IsiDataDiriPageState extends State<IsiDataDiriPage> {
                             child: _fotoIdentitas[index] != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: Image.file(
-                                      _fotoIdentitas[index]!,
-                                      fit: BoxFit.cover,
-                                    ),
+                                    child: kIsWeb
+                                        ? Image.network(
+                                            _fotoIdentitas[index]!.path,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Image.file(
+                                            File(_fotoIdentitas[index]!.path),
+                                            fit: BoxFit.cover,
+                                          ),
                                   )
                                 : const Center(
                                     child: Column(
