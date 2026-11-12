@@ -496,9 +496,13 @@ class _HistoryPageState extends State<HistoryPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
-      final dir = await getApplicationDocumentsDirectory();
-
+      // 1. Gunakan Temporary Directory agar PDF Viewer bisa membaca filenya
+      final dir = await getTemporaryDirectory(); 
       final filePath = "${dir.path}/ticket_$bookingId.pdf";
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Sedang mengunduh tiket...")),
+      );
 
       await Dio().download(
         "${ApiConfig.baseUrl}/user/bookings/$bookingId/pdf",
@@ -508,20 +512,33 @@ class _HistoryPageState extends State<HistoryPage> {
             "Authorization": "Bearer $token",
             "Accept": "application/pdf",
           },
+          // 2. Cegah Dio menyimpan file jika Laravel merespons 404 (Not Found) atau 500 (Error)
+          validateStatus: (status) => status != null && status < 400,
         ),
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Tiket berhasil didownload")),
+        const SnackBar(content: Text("Tiket berhasil didownload, membuka file...")),
       );
 
-      OpenFile.open(filePath);
+      // 3. Eksekusi OpenFile dan tangkap responnya
+      final result = await OpenFile.open(filePath);
+      
+      if (result.type != ResultType.done) {
+        debugPrint("Gagal membuka file: ${result.message}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Tidak ada aplikasi PDF Viewer di HP ini")),
+        );
+      }
+      
     } catch (e) {
       debugPrint("DOWNLOAD ERROR: $e");
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Gagal download tiket: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Gagal download tiket. Pastikan tiket sudah diverifikasi!"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
