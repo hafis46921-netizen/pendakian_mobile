@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'core/routes.dart';
 import 'features/profil/theme_notifier.dart';
+import 'features/tracking/tracking_service.dart';
+import 'dart:async';
 
 final ThemeNotifier themeNotifier = ThemeNotifier(); // Inisialisasi ThemeNotifier global
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await TrackingService.instance.initialize();
   runApp(const MyApp());
+
+  // Lanjutkan sesi tracking yang masih aktif tanpa menampilkan dialog izin.
+  unawaited(TrackingService.instance.resumeIfActive());
 }
 
 class MyApp extends StatelessWidget {

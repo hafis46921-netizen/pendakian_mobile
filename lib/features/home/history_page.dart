@@ -7,7 +7,8 @@ import '../../api_config.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
-import 'dart:io';
+import 'package:qr_flutter/qr_flutter.dart';
+import '../tracking/tracking_page.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -115,6 +116,14 @@ class _HistoryPageState extends State<HistoryPage> {
                   : 'Basecamp',
               'jumlah_pendaki': item['jumlah_pendaki'] ?? 1,
               'durasi': item['durasi_pendakian'] ?? 2,
+              'order_id': item['order_id'],
+              'kode_booking':
+                  item['kode_booking'] ??
+                  item['order_id'] ??
+                  'BOOK-${item['id']}',
+              'checkin_at': item['checkin_at'],
+              'checkout_at': item['checkout_at'],
+              'basecamp_id': item['basecamp_id'],
             };
           }).toList();
 
@@ -164,6 +173,14 @@ class _HistoryPageState extends State<HistoryPage> {
       backgroundColor: Colors.transparent,
       builder: (context) {
         final statusColor = _getStatusColor(booking['status']);
+        final canTrack =
+            booking['checkin_at'] != null && booking['checkout_at'] == null;
+        final sudahCheckin = booking['checkin_at'] != null;
+        final sudahCheckout = booking['checkout_at'] != null;
+        final kodeBooking =
+            booking['kode_booking']?.toString() ??
+            booking['order_id']?.toString() ??
+            'BOOK-${booking['id']}';
         return Container(
           margin: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -231,17 +248,21 @@ class _HistoryPageState extends State<HistoryPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      "Order ID",
+                      "Kode Booking",
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    Text(
-                      "#${booking['id']}",
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                    Flexible(
+                      child: Text(
+                        kodeBooking,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.6,
+                        ),
                       ),
                     ),
                   ],
@@ -327,6 +348,86 @@ class _HistoryPageState extends State<HistoryPage> {
                   ],
                 ),
                 const SizedBox(height: 30),
+
+                // QR E-TIKET (untuk scan validasi petugas basecamp)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: QrImageView(
+                    data: kodeBooking,
+                    version: QrVersions.auto,
+                    size: 170,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF2F4B7C),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Color(0xFF2F4B7C),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  sudahCheckout
+                      ? "Pendakian sudah selesai"
+                      : sudahCheckin
+                      ? "Tiket sudah divalidasi (check-in)"
+                      : "Tunjukkan QR ini ke petugas basecamp",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: sudahCheckin ? Colors.green : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Tombol Lacak GPS (aktif setelah check-in basecamp)
+                if (canTrack) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TrackingPage(
+                              bookingId: (booking['id'] as num).toInt(),
+                              bookingLabel:
+                                  booking['order_id']?.toString() ??
+                                      '#${booking['id']}',
+                              basecampLabel: booking['basecamp']?.toString(),
+                            ),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF2F4B7C),
+                        side: const BorderSide(
+                          color: Color(0xFF2F4B7C),
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                      ),
+                      icon: const Icon(Icons.my_location),
+                      label: const Text(
+                        "Lacak Pendakian (GPS)",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 // Tombol Tutup Struk
                 SizedBox(
@@ -680,7 +781,14 @@ class _HistoryPageState extends State<HistoryPage> {
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                              const SizedBox(width: 40),
+                              IconButton(
+                                onPressed: () => fetchHistory(),
+                                icon: const Icon(
+                                  Icons.refresh,
+                                  color: Colors.white,
+                                ),
+                                tooltip: "Muat ulang status tiket",
+                              ),
                             ],
                           ),
                         ),
@@ -789,7 +897,11 @@ class _HistoryPageState extends State<HistoryPage> {
       itemCount: data.length,
       itemBuilder: (context, index) {
         final currentBooking = data[index];
-        final String currentStatus = currentBooking['status'] ?? 'pending';
+        final String currentStatus = currentBooking['checkout_at'] != null
+            ? 'completed'
+            : currentBooking['checkin_at'] != null
+            ? 'checkin'
+            : (currentBooking['status'] ?? 'pending');
 
         return Container(
           margin: const EdgeInsets.only(bottom: 14),
@@ -997,6 +1109,10 @@ class _HistoryPageState extends State<HistoryPage> {
       case 'confirmed':
       case 'approved':
         return Colors.green;
+      case 'checkin':
+        return const Color(0xFF2F4B7C);
+      case 'completed':
+        return Colors.blueGrey;
       case 'pending':
         return Colors.orange;
       case 'cancelled':

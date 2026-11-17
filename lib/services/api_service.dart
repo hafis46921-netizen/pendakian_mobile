@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../api_config.dart';
 
 class ApiService {
   // Gunakan 10.0.2.2 untuk Emulator Android, atau IP Laptop untuk HP asli
-  static const String baseUrl = "http://192.168.0.101:8000/api";
+  static const String baseUrl = ApiConfig.baseUrl;
 
   // Fungsi Login
   Future<Map<String, dynamic>> login(String email, String password) async {
