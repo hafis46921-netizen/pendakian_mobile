@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../api_config.dart';
+import '../../services/app_check_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -50,12 +51,14 @@ class _LoginPageState extends State<LoginPage> {
       print("Mengirim Google ID Token ke Backend Laravel...");
 
       // 3. Kirim ID Token ke endpoint backend Laravel
+      final appCheckHeaders = await AppCheckService.headers();
       final response = await http
           .post(
             Uri.parse("${ApiConfig.baseUrl}/google-login"),
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
+              ...appCheckHeaders,
             },
             body: jsonEncode({"id_token": idToken}),
           )
@@ -101,7 +104,11 @@ class _LoginPageState extends State<LoginPage> {
 
         _pindahKeHalamanRegister(googleName, googleEmail);
       } 
-      // KONDISI C: Terjadi Error Lain dari Backend
+      // KONDISI C: Terlalu banyak percobaan
+      else if (response.statusCode == 429) {
+        throw Exception("Terlalu banyak percobaan. Coba lagi beberapa menit lagi.");
+      }
+      // KONDISI D: Terjadi Error Lain dari Backend
       else {
         throw Exception(data['message'] ?? "Gagal autentikasi via backend.");
       }
@@ -161,12 +168,14 @@ class _LoginPageState extends State<LoginPage> {
     try {
       print("Mengirim request login ke: ${ApiConfig.baseUrl}/login");
 
+      final appCheckHeaders = await AppCheckService.headers();
       final response = await http
           .post(
             Uri.parse("${ApiConfig.baseUrl}/login"),
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
+              ...appCheckHeaders,
             },
             body: jsonEncode({
               "email": emailController.text.trim(),
@@ -201,6 +210,14 @@ class _LoginPageState extends State<LoginPage> {
 
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/');
+      } else if (response.statusCode == 429) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Terlalu banyak percobaan login. Coba lagi beberapa menit lagi."),
+            backgroundColor: Colors.orange,
+          ),
+        );
       } else {
         if (!mounted) return;
         try {

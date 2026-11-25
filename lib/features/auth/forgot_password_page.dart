@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../../api_config.dart';
+import '../../services/app_check_service.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -28,12 +29,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       print("Mengirim request reset password ke: ${ApiConfig.baseUrl}/password/forgot");
 
+      final appCheckHeaders = await AppCheckService.headers();
       final response = await http
           .post(
             Uri.parse("${ApiConfig.baseUrl}/password/forgot"),
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
+              ...appCheckHeaders,
             },
             body: jsonEncode({
               "email": emailController.text.trim(),
@@ -55,6 +58,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         
         // Kembali ke halaman login setelah berhasil
         Navigator.pop(context);
+      } else if (response.statusCode == 429) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Terlalu banyak percobaan. Coba lagi beberapa menit lagi."),
+            backgroundColor: Colors.orange,
+          ),
+        );
       } else {
         final data = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(

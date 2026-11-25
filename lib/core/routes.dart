@@ -9,6 +9,7 @@ import '../features/ticket/invoice_pembayaran_page.dart';
 import '../features/home/history_page.dart';
 import '../features/auth/forgot_password_page.dart';
 import '../features/ticket/sewa_peralatan_page.dart';
+import '../features/chatbot/chatbot_page.dart';
 
 class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
@@ -27,5 +28,6 @@ class AppRoutes {
       // 2. Lempar data tersebut ke dalam parameter SewaPeralatanPage
       return SewaPeralatanPage(dataTiket: args ?? {});
     },
+    '/chatbot': (context) => const ChatbotPage(),
   };
 }

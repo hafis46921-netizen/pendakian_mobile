@@ -1,13 +1,44 @@
+import 'dart:async';
+
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 import 'core/routes.dart';
 import 'features/profil/theme_notifier.dart';
 import 'features/tracking/tracking_service.dart';
-import 'dart:async';
+import 'firebase_options.dart';
 
 final ThemeNotifier themeNotifier = ThemeNotifier(); // Inisialisasi ThemeNotifier global
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+
+    await FirebaseAppCheck.instance.activate(
+      providerAndroid: kDebugMode
+          ? const AndroidDebugProvider()
+          : const AndroidPlayIntegrityProvider(),
+      providerApple: kDebugMode
+          ? const AppleDebugProvider()
+          : const AppleAppAttestProvider(),
+    );
+  } on FirebaseException catch (e) {
+    if (e.code != 'already-initialized') {
+      debugPrint('Firebase/AppCheck init failed: $e');
+    }
+  } catch (e, st) {
+    debugPrint('Firebase/AppCheck init failed: $e');
+    debugPrint('$st');
+  }
+
   await TrackingService.instance.initialize();
   runApp(const MyApp());
 

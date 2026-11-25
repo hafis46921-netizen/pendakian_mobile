@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../../api_config.dart';
+import '../../services/app_check_service.dart';
 import 'dart:async';
 
 class RegisterPage extends StatefulWidget {
@@ -116,11 +117,13 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       print("Mengirim request registrasi ke: ${ApiConfig.baseUrl}/register");
 
+      final appCheckHeaders = await AppCheckService.headers();
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}/register"),
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json', 
+          'Content-Type': 'application/json',
+          ...appCheckHeaders,
         },
         body: jsonEncode({ 
           "name": nama,
@@ -141,6 +144,12 @@ class _RegisterPageState extends State<RegisterPage> {
           "Registrasi Berhasil", 
           "Akun SummitGo kamu sudah aktif. Silakan login.", 
           isSuccess: true
+        );
+      } else if (response.statusCode == 429) {
+        if (!mounted) return;
+        _showResultDialog(
+          "Terlalu Banyak Percobaan",
+          "Terlalu banyak percobaan registrasi. Coba lagi beberapa menit lagi.",
         );
       } else {
         if (!mounted) return;

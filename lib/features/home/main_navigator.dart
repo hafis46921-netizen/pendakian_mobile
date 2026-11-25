@@ -57,6 +57,22 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
+  Future<void> _openChatbot() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (!mounted) return;
+
+    if (token == null || token.isEmpty) {
+      Navigator.push(
+        context,
+        CupertinoPageRoute(builder: (context) => const LoginPage()),
+      );
+      return;
+    }
+
+    Navigator.pushNamed(context, '/chatbot');
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -76,6 +92,16 @@ class _MainNavigationState extends State<MainNavigation> {
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
+      ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: FloatingActionButton(
+          onPressed: _openChatbot,
+          backgroundColor: activeColor,
+          foregroundColor: Colors.white,
+          tooltip: 'Chatbot',
+          child: const Icon(CupertinoIcons.chat_bubble_text_fill),
+        ),
       ),
       bottomNavigationBar: ClipRect(
         // Efek Blur kaca di atas konten scrollable
